@@ -6,6 +6,9 @@ import JSON
 import YAML
 
 
+include("collate.jl")
+
+
 # Pattern used to extract YAML metadata from the front on input documents.
 const frontmatter_pattern = r"\A\s*^---$.*^\.\.\.$"sm
 
@@ -193,6 +196,13 @@ end
 #       Eg. markdown, rst, html, json, latex.
 #   name: A short name for the document used for naming output files.
 #
+# Returns:
+#   A pair (metadata, sections) where
+#   `metadata` is metadata parsed from the YAML front matter if any, and
+#   `sections` is an array of section/subsection names in the order in which
+#   they occur. Each section name is a pair (level, name) where `level` an
+#   integer giving the section level (1 is a section, 2 a sub-section, etc).
+#
 function weave(input::IO, output::IO; outfmt=:html5, name="judo")
     input_text = readall(input)
 
@@ -211,11 +221,18 @@ function weave(input::IO, output::IO; outfmt=:html5, name="judo")
     doc = WeaveDoc(name, outfmt, stdout_read, stdout_write)
     pushdisplay(doc)
 
+    sections = {}
+
     for block in document
-        if !isa(block, Dict) || !haskey(block, "CodeBlock")
+        if isa(block, Dict) && haskey(block, "Header")
+            level, name = block["Header"]
+            name = join([subblock["Str"] for subblock in name], " ")
+            push!(sections, (level, name))
             push!(doc.blocks, process_block(block))
-        else
+        elseif isa(block, Dict) && haskey(block, "CodeBlock")
             process_code_block(doc, block)
+        else
+            push!(doc.blocks, process_block(block))
         end
     end
 
@@ -253,6 +270,8 @@ function weave(input::IO, output::IO; outfmt=:html5, name="judo")
     buf = IOBuffer()
     JSON.print(buf, {pandoc_metadata, doc.blocks})
     write(output, pandoc(takebuf_string(buf), :json, outfmt))
+
+    metadata, sections
 end
 
 
