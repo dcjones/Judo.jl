@@ -10,23 +10,29 @@
   <link href="css/custom.css" rel="stylesheet" type="text/css" media="all">
   <link href="css/hk-pyg.css" rel="stylesheet" type="text/css" media="all">
   <script src="js/jquery-2.0.3.min.js" type="text/javascript"></script>
+  <script src="js/inflateText.js" type="text/javascript"></script>
   <script src="js/bootstrap.min.js" type="text/javascript"></script>
 </head>
 <body>
   <div class="container">
     <div class="row">
       <div class="col-sm-7">
+      <div id="title-block">
+        <h1>$title$</h1>
+      </div>
 
-        $body$
+$body$
         <hr>
       </div>
 
       <div class="col-sm-offset-8">
-        <div id="TOC">
-          <div id="title-block">
-            <h1>$title$</h1>
+        <div id="table-of-contents">
+          <div id="table-of-contents-content">
+            <div id="pkgname">
+            <h1>$pkgname$</h1>
+            </div>
+            $table-of-contents$
           </div>
-          $toc$
         </div>
       </div>
     </div>
@@ -35,6 +41,11 @@
     <p class="muted">Last modified by $author$ on $date$. Generated with
     <a href="https://github.com/dcjones/Judo.jl">Judo</a>.</p>
   </footer>
+
+  <script>
+    $$("#pkgname h1").inflateText();
+  </script>
+
   </div>
 </body>
 </html>

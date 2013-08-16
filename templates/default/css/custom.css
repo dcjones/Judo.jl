@@ -20,9 +20,15 @@ pre {
     background-color: inherit;
     color: inherit;
     margin: 0.5em 1.5em;
-    /*border-left: 1px solid #666;*/
     font-family: "Source Code Pro", "monospace";
     font-size: 9pt;
+}
+
+code {
+    font-family: "Source Code Pro", "monospace";
+    font-size: 9pt;
+    background-color: #f5f5f5;
+    color: inherit;
 }
 
 .output {
@@ -33,13 +39,15 @@ pre {
 
 h1 {
     padding-top: 0.75em;
-    margin-bottom: -2pt;
+    margin-bottom: 1.0pt;
     font-size: 18pt;
     font-family: "PT Sans", "sans-serif";
     font-weight: bolder;
 }
 
 h2, h3, h4, h5 {
+    margin-bottom: 1.0pt;
+    font-size: 14pt;
     font-family: "PT Sans", "sans-serif";
     font-weight: bolder;
     color: #555;
@@ -68,43 +76,72 @@ a {
     font-size: 9pt;
 }
 
-#TOC {
+#table-of-contents {
     position: fixed;
     width: 300px;
-    height: 1600px;
+    height: 100%;
     background-color: #f7f7f7;
     border: 1px solid #f3f3f3;
-    padding: 2em;
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+
+#table-of-contents-content {
+    padding-left: 35px;
+    padding-right: 35px;
+    padding-top: 35px;
+    position: absolute;
 }
 
 #title-block {
     padding-bottom: 1em;
+    text-align: right;
 }
 
 #title-block h1 {
     font-size: 36;
 }
 
-#TOC ul {
+#table-of-contents ul {
   list-style: none;
   padding: 0;
   padding-left: 0.5em;
 }
 
-#TOC > li {
+#table-of-contents > li {
   position: relative;
   display: block;
 }
 
-#TOC li > a {
+#table-of-contents li > a {
     font-weight: normal;
     display: block;
 }
 
-#TOC li > a:hover,
-#TOC li > a:focus {
+#table-of-contents li a:hover,
+#table-of-contents li a:focus {
   text-decoration: none;
   background-color: #eeeeee;
+}
+
+.toc-current-doc {
+    font-size: 16pt;
+}
+
+.toc-current-doc a {
+    font-weight: normal;
+}
+
+#pkgname {
+    width: 230px;
+    text-align: center;
+    text-shadow: 0px 2px 3px #ccc;
+    color: #555;
+}
+
+#pkgname h1 {
+    font-size: 52pt;
+    padding: 0;
 }
 
 

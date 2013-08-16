@@ -21,9 +21,16 @@ ap = ArgParseSettings("Generate documentation.")
         arg_type = String
         default = "default"
         help = "template to use"
+    "--package"
+        help = "build a package's documentation"
+        action = :store_true
 end
 
 args = ArgParse.parse_args(ap)
 
-Judo.collate([args["filename"]], template=args["template"], outdir=args["out"])
+if args["package"]
+    Judo.collate(args["filename"])
+else
+    Judo.collate([args["filename"]], template=args["template"], outdir=args["out"])
+end
 

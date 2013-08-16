@@ -1,9 +1,10 @@
 
 module Judo
 
-import Base: start, next, done, display
+import Base: start, next, done, display, writemime
 import JSON
 import YAML
+import Mustache
 
 
 include("collate.jl")
@@ -116,18 +117,38 @@ end
 
 
 # Display functions that render output and insert them into the document.
-function display(doc::WeaveDoc, ::@MIME("text/plain"), data)
+
+const supported_mime_types =
+    { MIME("text/html"),
+      MIME("image/svg+xml"),
+      MIME("image/png"),
+      MIME("text/latex"),
+      MIME("text/vnd.graphviz"),
+      MIME("text/plain") }
+
+
+function display(doc::WeaveDoc, data)
+    for m in supported_mime_types
+        if mimewritable(m, typeof(data))
+            display(doc, m, data)
+            break
+        end
+    end
+end
+
+
+function display(doc::WeaveDoc, m::@MIME("text/plain"), data)
     block =
         {"CodeBlock" =>
-           {{"", {"output"}, {}}, data}}
+           {{"", {"output"}, {}}, stringmime(m, data)}}
     push!(doc.display_blocks, block)
 end
 
 
-function display(doc::WeaveDoc, ::@MIME("text/latex"), data)
+function display(doc::WeaveDoc, m::@MIME("text/latex"), data)
     # latex to dvi
     input_path, input = mktemp()
-    print(input, data)
+    writemime(input, m, data)
     flush(input)
     seek(input, 0)
     latexout_dir = mktempdir()
@@ -139,14 +160,14 @@ function display(doc::WeaveDoc, ::@MIME("text/latex"), data)
     output = readall(`dvisvgm --stdout --no-fonts $(latexout_path)` .> SpawnNullStream())
     run(`rm -rf $(latexout_dir)`)
 
-    display("image/svg+xml", output)
+    display(doc, MIME("image/svg+xml"), output)
 end
 
 
-function display(doc::WeaveDoc, ::@MIME("image/svg+xml"), data)
+function display(doc::WeaveDoc, m::@MIME("image/svg+xml"), data)
     filename = @sprintf("%s_figure_%d.svg", doc.name, doc.fignum)
-    out = open(filename, "w")
-    write(out, data)
+    out = open(joinpath(doc.outdir, filename), "w")
+    writemime(out, m, data)
     close(out)
 
     alttext = @sprintf("Figure %d", doc.fignum)
@@ -179,12 +200,47 @@ function display(doc::WeaveDoc, ::@MIME("image/svg+xml"), data)
 end
 
 
-function display(doc::WeaveDoc, ::@MIME("text/vnd.graphviz"), data)
-    output, input, proc = readandwrite(`dot -Tsvg`)
-    write(input, data)
-    close(input)
-    display("image/svg+xml", readall(output))
+function display(doc::WeaveDoc, m::@MIME("image/png"), data)
+    filename = @sprintf("%s_figure_%d.png", doc.name, doc.fignum)
+    out = open(joinpath(doc.outdir, filename), "w")
+    writemime(out, m, data)
+    close(out)
+
+    alttext = @sprintf("Figure %d", doc.fignum)
+    figurl = filename
+    caption = ""
+
+    block =
+        {"Para" =>
+          {{"Image" =>
+            {{{"Str" => alttext}},
+             {figurl, ""}}}}}
+
+    doc.fignum += 1
+    push!(doc.display_blocks, block)
 end
+
+
+function display(doc::WeaveDoc, m::@MIME("text/vnd.graphviz"), data)
+    output, input, proc = readandwrite(`dot -Tsvg`)
+    writemime(input, m, data)
+    close(input)
+    display(doc, MIME("image/svg+xml"), readall(output))
+end
+
+
+function display(doc::WeaveDoc, m::@MIME("text/html"), data)
+    block = {"RawBlock" =>
+              {"html", stringmime(m, data)}}
+    push!(doc.display_blocks, block)
+end
+
+
+# This is maybe an abuse. TODO: This is going to be a problem.
+writemime(io, m::@MIME("text/vnd.graphviz"), data::String) = write(io, data)
+writemime(io, m::@MIME("image/vnd.graphviz"), data::String) = write(io, data)
+writemime(io, m::@MIME("image/svg+xml"), data::String) = write(io, data)
+writemime(io, m::@MIME("text/latex"), data::String) = write(io, data)
 
 
 # Transform a annotated markdown file into a variety of formats.
@@ -209,7 +265,8 @@ end
 #
 function weave(input::IO, output::IO;
                outfmt=:html5, name="judo", template=nothing,
-               toc=false, outdir=".")
+               toc::Bool=false, outdir::String=".", dryrun::Bool=false,
+               keyvals::Dict=Dict())
     input_text = readall(input)
 
     # parse yaml front matter
@@ -221,7 +278,8 @@ function weave(input::IO, output::IO;
     end
 
     # first pandoc pass
-    pandoc_metadata, document = JSON.parse(pandoc(input_text, :markdown, :json))
+    pandoc_metadata, document =
+        JSON.parse(pandoc(input_text, :markdown, :json))
     prev_stdout = STDOUT
     stdout_read, stdout_write = redirect_stdout()
     doc = WeaveDoc(name, outfmt, stdout_read, stdout_write, outdir)
@@ -236,17 +294,25 @@ function weave(input::IO, output::IO;
             for subblock in nameblocks
                 if subblock == "Space"
                     write(name, " ")
-                elseif is(subblock, Dict)
+                elseif isa(subblock, Dict)
                     write(name, subblock["Str"])
                 end
             end
             push!(sections, (level, takebuf_string(name)))
-            push!(doc.blocks, process_block(block))
+            if !dryrun
+                push!(doc.blocks, process_block(block))
+            end
+        elseif dryrun
+            continue
         elseif isa(block, Dict) && haskey(block, "CodeBlock")
             process_code_block(doc, block)
         else
             push!(doc.blocks, process_block(block))
         end
+    end
+
+    if dryrun
+        return metadata, sections
     end
 
     # splice in metadata fields that pandoc supports
@@ -284,6 +350,10 @@ function weave(input::IO, output::IO;
     JSON.print(buf, {pandoc_metadata, doc.blocks})
 
     args = {}
+    for (k, v) in keyvals
+        push!(args, "--variable=$(k):$(v)")
+    end
+
     if template != nothing
         push!(args, "--template=$(template)")
     end
@@ -428,12 +498,12 @@ function process_code_block(doc::WeaveDoc, block::Dict)
        end
        empty!(doc.display_blocks)
     else
-       if !hide
+       if !keyvals["hide"]
            push!(doc.blocks, block)
        end
 
        class = classes[1]
-       if display
+       if keyvals["display"]
            if class == "graphviz"
                display("text/vnd.graphviz", text)
            elseif class == "latex"
@@ -441,24 +511,15 @@ function process_code_block(doc::WeaveDoc, block::Dict)
            elseif class == "svg"
                display("image/svg+xml", text)
            end
+           append!(doc.blocks, doc.display_blocks)
        end
    end
 end
 
 
-# Evaluate an expression and return its results. Catch any errors and return
-# them in string form.
+# Evaluate an expression and return its result and a string.
 function safeeval(ex::Expr)
-    try
-        string(eval(WeaveSandbox, ex))
-    catch e
-        errout = IOBuffer()
-        print(errout, "ERROR: ")
-        Base.error_show(errout, e)
-        result = bytestring(errout)
-        close(errout)
-        result
-    end
+    string(eval(WeaveSandbox, ex))
 end
 
 
