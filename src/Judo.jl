@@ -60,8 +60,8 @@ function pandoc(input::String, infmt::Symbol, outfmt::Symbol, args::String...)
     cmd = ByteString["pandoc",
                      "--from=$(string(infmt))",
                      "--to=$(string(outfmt))"]
-    if !isempty(args)
-        append!(cmd, args)
+    for arg in args
+        push!(cmd, arg)
     end
     pandoc_out, pandoc_in, proc = readandwrite(Cmd(cmd))
     write(pandoc_in, input)
@@ -105,8 +105,12 @@ type WeaveDoc <: Display
     stdout_read
     stdout_write
 
-    function WeaveDoc(name::String, outfmt::Symbol, stdout_read, stdout_write)
-        new({}, {}, name, outfmt, 1, stdout_read, stdout_write)
+    # Output directory
+    outdir::String
+
+    function WeaveDoc(name::String, outfmt::Symbol, stdout_read, stdout_write,
+                      outdir::String)
+        new({}, {}, name, outfmt, 1, stdout_read, stdout_write, outdir)
     end
 end
 
@@ -115,7 +119,7 @@ end
 function display(doc::WeaveDoc, ::@MIME("text/plain"), data)
     block =
         {"CodeBlock" =>
-           {{"", {}, {}}, data}}
+           {{"", {"output"}, {}}, data}}
     push!(doc.display_blocks, block)
 end
 
@@ -203,7 +207,9 @@ end
 #   they occur. Each section name is a pair (level, name) where `level` an
 #   integer giving the section level (1 is a section, 2 a sub-section, etc).
 #
-function weave(input::IO, output::IO; outfmt=:html5, name="judo")
+function weave(input::IO, output::IO;
+               outfmt=:html5, name="judo", template=nothing,
+               toc=false, outdir=".")
     input_text = readall(input)
 
     # parse yaml front matter
@@ -218,16 +224,23 @@ function weave(input::IO, output::IO; outfmt=:html5, name="judo")
     pandoc_metadata, document = JSON.parse(pandoc(input_text, :markdown, :json))
     prev_stdout = STDOUT
     stdout_read, stdout_write = redirect_stdout()
-    doc = WeaveDoc(name, outfmt, stdout_read, stdout_write)
+    doc = WeaveDoc(name, outfmt, stdout_read, stdout_write, outdir)
     pushdisplay(doc)
 
     sections = {}
 
     for block in document
         if isa(block, Dict) && haskey(block, "Header")
-            level, name = block["Header"]
-            name = join([subblock["Str"] for subblock in name], " ")
-            push!(sections, (level, name))
+            level, nameblocks = block["Header"]
+            name = IOBuffer()
+            for subblock in nameblocks
+                if subblock == "Space"
+                    write(name, " ")
+                elseif is(subblock, Dict)
+                    write(name, subblock["Str"])
+                end
+            end
+            push!(sections, (level, takebuf_string(name)))
             push!(doc.blocks, process_block(block))
         elseif isa(block, Dict) && haskey(block, "CodeBlock")
             process_code_block(doc, block)
@@ -269,7 +282,17 @@ function weave(input::IO, output::IO; outfmt=:html5, name="judo")
     # second pandoc pass
     buf = IOBuffer()
     JSON.print(buf, {pandoc_metadata, doc.blocks})
-    write(output, pandoc(takebuf_string(buf), :json, outfmt))
+
+    args = {}
+    if template != nothing
+        push!(args, "--template=$(template)")
+    end
+
+    if toc
+        push!(args, "--toc")
+    end
+
+    write(output, pandoc(takebuf_string(buf), :json, outfmt, args...))
 
     metadata, sections
 end

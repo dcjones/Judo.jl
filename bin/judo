@@ -1,0 +1,29 @@
+#!/usr/bin/env julia
+
+
+pkgdir = Pkg.dir("Judo")
+include(joinpath(pkgdir, "src", "Judo.jl"))
+
+import Judo
+using ArgParse
+
+ap = ArgParseSettings("Generate documentation.")
+@add_arg_table ap begin
+    "filename"
+        arg_type = String
+        help = "input filename"
+        required = true
+    "--out"
+        arg_type = String
+        default = "."
+        help = "output directory"
+    "--template"
+        arg_type = String
+        default = "default"
+        help = "template to use"
+end
+
+args = ArgParse.parse_args(ap)
+
+Judo.collate([args["filename"]], template=args["template"], outdir=args["out"])
+

@@ -1,0 +1,110 @@
+
+// Customizations to base bootstrap styles
+
+.container {
+    margin: auto;
+    width: auto;
+    max-width: 900px;
+}
+
+#footer {
+    width: auto;
+    margin: 10px;
+}
+
+pre {
+    border: 0;
+    -webkit-border-radius: 0;
+    -moz-border-radius: 0;
+    border-radius: 0;
+    background-color: inherit;
+    color: inherit;
+    margin: 0.5em 1.5em;
+    /*border-left: 1px solid #666;*/
+    font-family: "Source Code Pro", "monospace";
+    font-size: 9pt;
+}
+
+.output {
+    background-color: #fafafa;
+    border: 1px solid #f1f1f5;
+    margin: 0.5em 2.5em;
+}
+
+h1 {
+    padding-top: 0.75em;
+    margin-bottom: -2pt;
+    font-size: 18pt;
+    font-family: "PT Sans", "sans-serif";
+    font-weight: bolder;
+}
+
+h2, h3, h4, h5 {
+    font-family: "PT Sans", "sans-serif";
+    font-weight: bolder;
+    color: #555;
+}
+
+h1 a, h2 a, h3 a, h4 a, h5 a {
+    color: #444;
+}
+
+body {
+    font-family: "Source Sans Pro", "sans-serif";
+    font-size: 11pt;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+a {
+    font-weight: bolder;
+    color: #444;
+}
+
+.muted {
+    color: #666;
+    font-size: 9pt;
+}
+
+#TOC {
+    position: fixed;
+    width: 300px;
+    height: 1600px;
+    background-color: #f7f7f7;
+    border: 1px solid #f3f3f3;
+    padding: 2em;
+}
+
+#title-block {
+    padding-bottom: 1em;
+}
+
+#title-block h1 {
+    font-size: 36;
+}
+
+#TOC ul {
+  list-style: none;
+  padding: 0;
+  padding-left: 0.5em;
+}
+
+#TOC > li {
+  position: relative;
+  display: block;
+}
+
+#TOC li > a {
+    font-weight: normal;
+    display: block;
+}
+
+#TOC li > a:hover,
+#TOC li > a:focus {
+  text-decoration: none;
+  background-color: #eeeeee;
+}
+
+
