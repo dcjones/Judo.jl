@@ -1,6 +1,7 @@
 ---
 title: Judo Markdown
 author: Daniel Jones
+order: 2
 ...
 
 Markdown interpreted by Judo is
@@ -61,7 +62,7 @@ The following key/value pairs are supported.
   * `results="block"`: Display the result of the last expression in the block.
   * `results="expression"`: Display the result of every expression in the block.
 
-Note: pandoc is pretty picky about how these are parsed. For example, quotation
+Note: pandoc is pretty picky about how these are parsed. Quotation
 marks around the value in key/value pairs are mandatory.
 
 
@@ -78,8 +79,4 @@ digraph {
     "compile documentation" -> "enjoy an overwhelming sense of satisfaction";
 }
 ```
-
-
-
-
 

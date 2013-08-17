@@ -7,6 +7,8 @@ import YAML
 import Mustache
 
 
+include("walkdir.jl")
+include("harvest.jl")
 include("collate.jl")
 
 

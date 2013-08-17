@@ -1,40 +1,14 @@
 
 # Turn a collection of markdown files into a browsable multi-page manual.
 
-
-# Recursively list files under a directory.
-#
-# Args:
-#   root: Path to descend.
-#
-# Returns:
-#   A vector of paths relative to root.
-#
-function walkdir(root::String)
-    root = abspath(root)
-    contents = String[]
-    stack = String[]
-    push!(stack, root)
-    while !isempty(stack)
-        path = pop!(stack)
-        for f in readdir(path)
-            fullpath = joinpath(path, f)
-            if isdir(fullpath)
-                push!(stack, fullpath)
-            else
-                push!(contents, fullpath)
-            end
-        end
-    end
-    contents
-end
-
-
 # Files to be weaved when generating a packages documentation.
 const ext_doc_pat = r"\.(md|txt|rst)$"i
 
 
+# Generate documentation from the given package.
 function collate(package::String)
+    declarations = harvest(package)
+
     filenames = {}
     for filename in walkdir(joinpath(Pkg.dir(package), "doc"))
         if match(ext_doc_pat, filename) != nothing
@@ -47,17 +21,20 @@ function collate(package::String)
         mkdir(outdir)
     end
 
-    collate(filenames, outdir=outdir, pkgname=package)
+    collate(filenames, outdir=outdir, pkgname=package,
+            declarations=declarations)
 end
 
-
+# Generate documentation from a multiple files.
 function collate(filenames::Vector;
                  template::String="default",
                  outdir::String=".",
+                 declarations::Dict=Dict(),
                  pkgname=nothing)
-    toc = Dict()
+    toc = {}
     titles = Dict()
-    names = Dict()
+
+    declaration_markdown = generate_declaration_markdown(declarations)
 
     if !isdir(template)
         template = joinpath(Pkg.dir("Judo"), "templates", template)
@@ -66,15 +43,22 @@ function collate(filenames::Vector;
         end
     end
 
-    # dry-run to collect the section names in each document
+    # make any expansions necessary in the original document
+    docs = Dict()
     for filename in filenames
-        metadata, sections = weave(open(filename), IOBuffer(), dryrun=true)
         name = choose_document_name(filename)
+        docs[name] = expand_declaration_docs(readall(filename),
+                                             declaration_markdown)
+    end
+
+    # dry-run to collect the section names in each document
+    for (name, doc) in docs
+        metadata, sections = weave(IOBuffer(doc), IOBuffer(), dryrun=true)
         title = get(metadata, "title", name)
         titles[name] = title
-        names[title] = name
-        toc[title] = sections
+        push!(toc, (get(metadata, "order", 0), name, title, sections))
     end
+    sort!(toc)
 
     pandoc_template = joinpath(template, "template.html")
 
@@ -84,14 +68,13 @@ function collate(filenames::Vector;
         keyvals["pkgname"] = pkgname
     end
 
-    for filename in filenames
+    for (name, doc) in docs
         fmt = :markdown
-        name = choose_document_name(filename)
         title = titles[name]
         outfilename = joinpath(outdir, string(name, ".html"))
         outfile = open(outfilename, "w")
-        keyvals["table-of-contents"] = table_of_contents(toc, names, title)
-        metadata, sections = weave(open(filename), outfile,
+        keyvals["table-of-contents"] = table_of_contents(toc, title)
+        metadata, sections = weave(IOBuffer(doc), outfile,
                                    name=name, template=pandoc_template,
                                    toc=true, outdir=outdir,
                                    keyvals=keyvals)
@@ -133,10 +116,10 @@ end
 
 
 # Generate a table of contents for the given document.
-function table_of_contents(toc::Dict, names::Dict, selected_title::String)
+function table_of_contents(toc, selected_title::String)
     out = IOBuffer()
     write(out, "<ul>\n")
-    for (title, sections) in toc
+    for (order, name, title, sections) in toc
         write(out, "<li>")
         if title == selected_title
             write(out,
@@ -146,7 +129,7 @@ function table_of_contents(toc::Dict, names::Dict, selected_title::String)
                 """)
             write(out, table_of_contents_sections(sections))
         else
-            @printf(out, "<a href=\"%s.html\">%s</a>", names[title], title)
+            @printf(out, "<a href=\"%s.html\">%s</a>", name, title)
         end
         write(out, "</li>")
     end
@@ -155,18 +138,37 @@ function table_of_contents(toc::Dict, names::Dict, selected_title::String)
 end
 
 
-function table_of_contents_sections(sections)
+function table_of_contents_sections(sections; maxlevel=2)
     if isempty(sections)
         return ""
     end
 
     out = IOBuffer()
-    write(out, "<ul>\n")
+    current_level = 0
     for (level, section) in sections
+        if level > maxlevel
+            continue
+        end
+
+        while level > current_level
+            write(out, "<ul>\n")
+            current_level += 1
+        end
+
+        while level < current_level
+            write(out, "</ul>\n")
+            current_level -= 1
+        end
+
         @printf(out, "<li><a href=\"#%s\">%s</a/></li>\n",
                 section_id(section), section)
+
     end
-    write(out, "</ul>\n")
+
+    while current_level > 0
+        write(out, "</ul>\n")
+        current_level -= 1
+    end
     takebuf_string(out)
 end
 

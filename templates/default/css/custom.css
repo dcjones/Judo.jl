@@ -41,20 +41,29 @@ h1 {
     padding-top: 0.75em;
     margin-bottom: 1.0pt;
     font-size: 18pt;
-    font-family: "PT Sans", "sans-serif";
-    font-weight: bolder;
 }
 
-h2, h3, h4, h5 {
-    margin-bottom: 1.0pt;
+h2 {
+    font-size: 16pt;
+}
+
+h3 {
     font-size: 14pt;
+}
+
+h4 {
+    font-size: 11pt;
+}
+
+h1, h2, h3, h4, h5 {
+    margin-bottom: 1.0pt;
     font-family: "PT Sans", "sans-serif";
     font-weight: bolder;
-    color: #555;
+    color: #504545;
 }
 
 h1 a, h2 a, h3 a, h4 a, h5 a {
-    color: #444;
+    color: #504545;
 }
 
 body {
@@ -105,7 +114,7 @@ a {
 #table-of-contents ul {
   list-style: none;
   padding: 0;
-  padding-left: 0.5em;
+  padding-left: 1em;
 }
 
 #table-of-contents > li {
@@ -135,13 +144,20 @@ a {
 #pkgname {
     width: 230px;
     text-align: center;
-    text-shadow: 0px 2px 3px #ccc;
+    text-shadow: 0px 0px 1px #000;
     color: #555;
 }
 
 #pkgname h1 {
+    color: #666;
     font-size: 52pt;
     padding: 0;
 }
+
+.api-doc ul {
+    padding-left: 1em;
+    list-style: none;
+}
+
 
 
