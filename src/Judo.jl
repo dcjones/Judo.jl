@@ -454,74 +454,73 @@ function process_code_block(doc::WeaveDoc, block::Dict)
     keyvals["hide"]    = codeblock_keyval_bool(keyvals, "hide",    false)
     keyvals["execute"] = codeblock_keyval_bool(keyvals, "execute", true)
     keyvals["display"] = codeblock_keyval_bool(keyvals, "display", true)
-    keyvals["results"] = get(keyvals, "results", "none")
+    keyvals["results"] = get(keyvals, "results", "block")
 
     if isempty(classes) || classes[1] == "julia" ||
-       !has(code_block_classes, classes[1])
+        !contains(code_block_classes, classes[1])
 
-       if keyvals["results"] == "none" || keyvals["results"] == "block"
-           result = string(nothing)
-           if keyvals["execute"]
-               for (cmd, ex) in parseit(strip(text))
-                   result = safeeval(ex)
-               end
-           end
+        if keyvals["results"] == "none" || keyvals["results"] == "block"
+            result = nothing
+            if keyvals["execute"]
+                for (cmd, ex) in parseit(strip(text))
+                    result = safeeval(ex)
+                end
+            end
 
-           if keyvals["results"] == "block"
-               output_text = string(output_text, "\n\n## ", result, "\n")
-           else
-               output_text = text
-           end
-       elseif keyvals["results"] == "expression"
-           if keyvals["execute"]
-               output_text = IOBuffer()
-               for (cmd, ex) in parseit(strip(text))
-                   println(output_text, cmd)
-                   println(output_text, "## ", safeeval(ex), "\n")
-               end
-           else
-               output_text = text
-           end
-       end
+            if keyvals["results"] == "block" && result != nothing
+                display(result)
+            end
+            output_text = text
+        elseif keyvals["results"] == "expression"
+            if keyvals["execute"]
+                output_text = IOBuffer()
+                for (cmd, ex) in parseit(strip(text))
+                    println(output_text, cmd)
+                    println(output_text, "## ", string(safeeval(ex)), "\n")
+                end
+            else
+                output_text = text
+            end
+        end
 
-       if !keyvals["hide"]
-           push!(doc.blocks,
-           {"CodeBlock" => {{id, {"julia", classes...}, keyvals_array}, output_text}})
-       end
+        if !keyvals["hide"]
+            push!(doc.blocks,
+            {"CodeBlock" => {{id, {"julia", classes...}, keyvals_array}, output_text}})
+        end
 
-       if keyvals["display"]
-           # TODO: Is there a way to check for output without this dirty trick?
-           write(doc.stdout_write, '.')
-           stdout_output = readavailable(doc.stdout_read)[1:end-1]
-           if !isempty(stdout_output)
-               display("text/plain", stdout_output)
-           end
-           append!(doc.blocks, doc.display_blocks)
-       end
-       empty!(doc.display_blocks)
+        if keyvals["display"]
+            # TODO: Is there a way to check for output without this dirty trick?
+            write(doc.stdout_write, '.')
+            stdout_output = readavailable(doc.stdout_read)[1:end-1]
+            if !isempty(stdout_output)
+                display("text/plain", stdout_output)
+            end
+            append!(doc.blocks, doc.display_blocks)
+        end
+        empty!(doc.display_blocks)
     else
-       if !keyvals["hide"]
-           push!(doc.blocks, block)
-       end
+        if !keyvals["hide"]
+            push!(doc.blocks, block)
+        end
 
-       class = classes[1]
-       if keyvals["display"]
-           if class == "graphviz"
-               display("text/vnd.graphviz", text)
-           elseif class == "latex"
-               display("text/latex", text)
-           elseif class == "svg"
-               display("image/svg+xml", text)
-           end
-           append!(doc.blocks, doc.display_blocks)
-       end
-   end
+        class = classes[1]
+        if keyvals["display"]
+            if class == "graphviz"
+                display("text/vnd.graphviz", text)
+            elseif class == "latex"
+                display("text/latex", text)
+            elseif class == "svg"
+                display("image/svg+xml", text)
+            end
+            append!(doc.blocks, doc.display_blocks)
+        end
+    end
 end
 
 
 # Evaluate an expression and return its result and a string.
 function safeeval(ex::Expr)
-    string(eval(WeaveSandbox, ex))
+    eval(WeaveSandbox, ex)
 end
 
 
