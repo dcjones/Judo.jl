@@ -4,10 +4,26 @@
 # Files to be weaved when generating a packages documentation.
 const ext_doc_pat = r"\.(md|txt|rst)$"i
 
+# Pattern for matching github package urls
+const pkgurl_pat = r"github.com/(.*)\.git$"
 
 # Generate documentation from the given package.
 function collate(package::String)
     declarations = harvest(package)
+
+    pkgver = Pkg.Dir.cd(() -> Pkg.Read.installed()[package][1])
+    pkgver_out = IOBuffer()
+    print(pkgver_out, pkgver)
+    pkgver = takebuf_string(pkgver_out)
+
+    pkgurl = "#"
+    try
+        pkgurl_mat = match(pkgurl_pat, Pkg.Dir.cd(() -> Pkg.Read.url(package)))
+        if pkgurl_mat != nothing
+            pkgurl = string("http://github.com/", pkgurl_mat.captures[1])
+        end
+    catch
+    end
 
     filenames = {}
     for filename in walkdir(joinpath(Pkg.dir(package), "doc"))
@@ -21,8 +37,8 @@ function collate(package::String)
         mkdir(outdir)
     end
 
-    collate(filenames, outdir=outdir, pkgname=package,
-            declarations=declarations)
+    collate(filenames, outdir=outdir, pkgname=package, pkgver=pkgver,
+            pkgurl=pkgurl, declarations=declarations)
 end
 
 # Generate documentation from a multiple files.
@@ -30,7 +46,9 @@ function collate(filenames::Vector;
                  template::String="default",
                  outdir::String=".",
                  declarations::Dict=Dict(),
-                 pkgname=nothing)
+                 pkgname=nothing,
+                 pkgver=nothing,
+                 pkgurl=nothing)
     toc = {}
     titles = Dict()
 
@@ -66,6 +84,14 @@ function collate(filenames::Vector;
 
     if pkgname != nothing
         keyvals["pkgname"] = pkgname
+    end
+
+    if pkgver != nothing
+        keyvals["pkgver"] = pkgver
+    end
+
+    if pkgurl != nothing
+        keyvals["pkgurl"] = pkgurl
     end
 
     for (name, doc) in docs
@@ -124,7 +150,7 @@ function table_of_contents(toc, selected_title::String)
         if title == selected_title
             write(out,
                 """<div class="toc-current-doc">
-                     <a href="#title-block">$(title)</a>
+                     <a href="#topbar">$(title)</a>
                    </div>\n
                 """)
             write(out, table_of_contents_sections(sections))

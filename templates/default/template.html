@@ -14,7 +14,19 @@
   <script src="js/bootstrap.min.js" type="text/javascript"></script>
 </head>
 <body>
-  <div class="container">
+  <div id="topbar" style="z-index: 3">
+    <div class="container">
+      <div class="row">
+        <ul>
+          <li><div id="pkgname">$pkgname$ $pkgver$</div></li>
+          <li><a href="$pkgurl$">Code</a></li>
+          <li><a href="$pkgurl$/issues">Issues</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="container" style="z-index: auto">
     <div class="row">
       <div class="col-sm-7">
       <div id="title-block">
@@ -25,12 +37,9 @@ $body$
         <hr>
       </div>
 
-      <div class="col-sm-offset-8">
+      <div class="col-sm-offset-8" style="z-index: 2">
         <div id="table-of-contents">
           <div id="table-of-contents-content">
-            <div id="pkgname">
-            <h1>$pkgname$</h1>
-            </div>
             $table-of-contents$
           </div>
         </div>
@@ -42,9 +51,9 @@ $body$
     <a href="https://github.com/dcjones/Judo.jl">Judo</a>.</p>
   </footer>
 
-  <script>
-    $$("#pkgname h1").inflateText();
-  </script>
+  <!--<script>-->
+    <!--$$("#pkgname h1").inflateText();-->
+  <!--</script>-->
 
   </div>
 </body>

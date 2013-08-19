@@ -7,6 +7,33 @@
     max-width: 900px;
 }
 
+#topbar {
+    background-color: #333;
+    position: relative;
+    color: white;
+}
+
+#topbar ul {
+    padding: 0;
+    margin: 0;
+}
+
+#topbar li {
+    padding: 0;
+    position: relative;
+    display: inline-block;
+    list-style: none;
+}
+
+#topbar a {
+    position: relative;
+    display: inline-block;
+    padding: 3px 15px;
+    color: white;
+    font-weight: normal;
+    font-size: 10pt;
+}
+
 #footer {
     width: auto;
     margin: 10px;
@@ -89,16 +116,19 @@ a {
     position: fixed;
     width: 300px;
     height: 100%;
-    background-color: #f7f7f7;
-    border: 1px solid #f3f3f3;
+    top: 0;
+    background-color: #fff;
+    border-left: 1px solid #f3f3f3;
     overflow-y: scroll;
     overflow-x: hidden;
+    z-index: 2;
 }
 
 #table-of-contents-content {
+    position: fixed;
     padding-left: 35px;
     padding-right: 35px;
-    padding-top: 35px;
+    padding-top: 110px;
     position: absolute;
 }
 
@@ -108,7 +138,7 @@ a {
 }
 
 #title-block h1 {
-    font-size: 36;
+    font-size: 16pt;
 }
 
 #table-of-contents ul {
@@ -125,6 +155,7 @@ a {
 #table-of-contents li > a {
     font-weight: normal;
     display: block;
+    color: #333;
 }
 
 #table-of-contents li a:hover,
@@ -133,25 +164,14 @@ a {
   background-color: #eeeeee;
 }
 
-.toc-current-doc {
-    font-size: 16pt;
-}
-
 .toc-current-doc a {
-    font-weight: normal;
+    font-weight: bolder;
+    display: block;
+    color: #333;
 }
 
 #pkgname {
-    width: 230px;
-    text-align: center;
-    text-shadow: 0px 0px 1px #000;
-    color: #555;
-}
-
-#pkgname h1 {
-    color: #666;
-    font-size: 52pt;
-    padding: 0;
+    font-size: 12pt;
 }
 
 .api-doc ul {
