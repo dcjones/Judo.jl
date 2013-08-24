@@ -4,8 +4,10 @@
 # Files to be weaved when generating a packages documentation.
 const ext_doc_pat = r"\.(md|txt|rst)$"i
 
+
 # Pattern for matching github package urls
 const pkgurl_pat = r"github.com/(.*)\.git$"
+
 
 # Generate documentation from the given package.
 function collate(package::String)
@@ -40,6 +42,7 @@ function collate(package::String)
     collate(filenames, outdir=outdir, pkgname=package, pkgver=pkgver,
             pkgurl=pkgurl, declarations=declarations)
 end
+
 
 # Generate documentation from a multiple files.
 function collate(filenames::Vector;

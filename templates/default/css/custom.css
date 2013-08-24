@@ -11,6 +11,7 @@
     background-color: #333;
     position: relative;
     color: white;
+    font-family: "PT Sans", "Helvetica Neue", "Helvetica", "Arial", "sans-serif";
 }
 
 #topbar ul {
@@ -64,6 +65,10 @@ code {
     margin: 0.5em 2.5em;
 }
 
+img {
+    padding: 10px;
+}
+
 h1 {
     padding-top: 0.75em;
     margin-bottom: 1.0pt;
@@ -84,8 +89,7 @@ h4 {
 
 h1, h2, h3, h4, h5 {
     margin-bottom: 1.0pt;
-    font-family: "PT Sans", "sans-serif";
-    font-weight: bolder;
+    font-family: "PT Sans", "Helvetica Neue", "Helvetica", "Arial", "sans-serif";
     color: #504545;
 }
 
@@ -95,7 +99,7 @@ h1 a, h2 a, h3 a, h4 a, h5 a {
 
 body {
     font-family: "Source Sans Pro", "sans-serif";
-    font-size: 11pt;
+    font-size: 10.5pt;
 }
 
 a:hover {
@@ -139,6 +143,7 @@ a {
 
 #title-block h1 {
     font-size: 16pt;
+    font-weight: bolder;
 }
 
 #table-of-contents ul {

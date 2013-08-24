@@ -277,6 +277,8 @@ function weave(input::IO, output::IO;
     if !is(mat, nothing)
         metadata = YAML.load(bytestring(mat.match))
         input_text = input_text[1+length(mat.match):]
+    else
+        metadata = Dict()
     end
 
     # first pandoc pass
@@ -292,22 +294,26 @@ function weave(input::IO, output::IO;
     for block in document
         if isa(block, Dict) && haskey(block, "Header")
             level, nameblocks = block["Header"]
-            name = IOBuffer()
+            headername = IOBuffer()
             for subblock in nameblocks
                 if subblock == "Space"
-                    write(name, " ")
+                    write(headername, " ")
                 elseif isa(subblock, Dict)
-                    write(name, subblock["Str"])
+                    write(headername, subblock["Str"])
                 end
             end
-            push!(sections, (level, takebuf_string(name)))
+            push!(sections, (level, takebuf_string(headername)))
             if !dryrun
                 push!(doc.blocks, process_block(block))
             end
         elseif dryrun
             continue
         elseif isa(block, Dict) && haskey(block, "CodeBlock")
-            process_code_block(doc, block)
+            try
+                process_code_block(doc, block)
+            catch err
+                error("Error processing codeblock in document $(name):\n$(string(err))")
+            end
         else
             push!(doc.blocks, process_block(block))
         end
