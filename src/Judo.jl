@@ -121,25 +121,25 @@ end
 # Display functions that render output and insert them into the document.
 
 const supported_mime_types =
-    { MIME("text/html"),
-      MIME("image/svg+xml"),
-      MIME("image/png"),
-      MIME("text/latex"),
-      MIME("text/vnd.graphviz"),
-      MIME("text/plain") }
+    { MIME"text/html",
+      MIME"image/svg+xml",
+      MIME"image/png",
+      MIME"text/latex",
+      MIME"text/vnd.graphviz",
+      MIME"text/plain" }
 
 
 function display(doc::WeaveDoc, data)
     for m in supported_mime_types
-        if mimewritable(m, typeof(data))
-            display(doc, m, data)
+        if mimewritable(m(), data)
+            display(doc, m(), data)
             break
         end
     end
 end
 
 
-function display(doc::WeaveDoc, m::@MIME("text/plain"), data)
+function display(doc::WeaveDoc, m::MIME"text/plain", data)
     block =
         {"CodeBlock" =>
            {{"", {"output"}, {}}, stringmime(m, data)}}
@@ -147,7 +147,7 @@ function display(doc::WeaveDoc, m::@MIME("text/plain"), data)
 end
 
 
-function display(doc::WeaveDoc, m::@MIME("text/latex"), data)
+function display(doc::WeaveDoc, m::MIME"text/latex", data)
     # latex to dvi
     input_path, input = mktemp()
     writemime(input, m, data)
@@ -166,7 +166,7 @@ function display(doc::WeaveDoc, m::@MIME("text/latex"), data)
 end
 
 
-function display(doc::WeaveDoc, m::@MIME("image/svg+xml"), data)
+function display(doc::WeaveDoc, m::MIME"image/svg+xml", data)
     filename = @sprintf("%s_figure_%d.svg", doc.name, doc.fignum)
     out = open(joinpath(doc.outdir, filename), "w")
     writemime(out, m, data)
@@ -202,7 +202,7 @@ function display(doc::WeaveDoc, m::@MIME("image/svg+xml"), data)
 end
 
 
-function display(doc::WeaveDoc, m::@MIME("image/png"), data)
+function display(doc::WeaveDoc, m::MIME"image/png", data)
     filename = @sprintf("%s_figure_%d.png", doc.name, doc.fignum)
     out = open(joinpath(doc.outdir, filename), "w")
     writemime(out, m, data)
@@ -223,7 +223,7 @@ function display(doc::WeaveDoc, m::@MIME("image/png"), data)
 end
 
 
-function display(doc::WeaveDoc, m::@MIME("text/vnd.graphviz"), data)
+function display(doc::WeaveDoc, m::MIME"text/vnd.graphviz", data)
     output, input, proc = readandwrite(`dot -Tsvg`)
     writemime(input, m, data)
     close(input)
@@ -231,7 +231,7 @@ function display(doc::WeaveDoc, m::@MIME("text/vnd.graphviz"), data)
 end
 
 
-function display(doc::WeaveDoc, m::@MIME("text/html"), data)
+function display(doc::WeaveDoc, m::MIME"text/html", data)
     block = {"RawBlock" =>
               {"html", stringmime(m, data)}}
     push!(doc.display_blocks, block)
@@ -239,10 +239,10 @@ end
 
 
 # This is maybe an abuse. TODO: This is going to be a problem.
-writemime(io, m::@MIME("text/vnd.graphviz"), data::String) = write(io, data)
-writemime(io, m::@MIME("image/vnd.graphviz"), data::String) = write(io, data)
-writemime(io, m::@MIME("image/svg+xml"), data::String) = write(io, data)
-writemime(io, m::@MIME("text/latex"), data::String) = write(io, data)
+writemime(io, m::MIME"text/vnd.graphviz", data::String) = write(io, data)
+writemime(io, m::MIME"image/vnd.graphviz", data::String) = write(io, data)
+writemime(io, m::MIME"image/svg+xml", data::String) = write(io, data)
+writemime(io, m::MIME"text/latex", data::String) = write(io, data)
 
 
 # Transform a annotated markdown file into a variety of formats.
