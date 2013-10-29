@@ -164,7 +164,7 @@ function table_of_contents(toc, selected_title::String)
     out = IOBuffer()
     for part in parts[sortperm(part_order)]
         if part != nothing
-            write(out, "<div class="toc-part">$(part)</div>\n")
+            write(out, """<hr><div class="toc-part">$(part)</div>\n""")
         end
 
         write(out, "<ul>\n")
