@@ -398,7 +398,7 @@ function process_block(block::Dict)
     for (k, v) in block
         if k == "Code"
             (id, classes, keyvals), text = v
-            if contains(classes, "julia")
+            if "julia" in classes
                 out = eval(WeaveSandbox, parse(text))
                 v[2] = string(out)
             end
@@ -463,7 +463,7 @@ function process_code_block(doc::WeaveDoc, block::Dict)
     keyvals["results"] = get(keyvals, "results", "block")
 
     if isempty(classes) || classes[1] == "julia" ||
-        !contains(code_block_classes, classes[1])
+        !in(classes[1], code_block_classes)
 
         if keyvals["results"] == "none" || keyvals["results"] == "block"
             result = nothing

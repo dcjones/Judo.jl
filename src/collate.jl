@@ -13,7 +13,11 @@ const pkgurl_pat = r"github.com/(.*)\.git$"
 function collate(package::String)
     declarations = harvest(package)
 
-    pkgver = Pkg.Dir.cd(() -> Pkg.Read.installed()[package][1])
+    pkgver = ""
+    try
+        pkgver = Pkg.Dir.cd(() -> Pkg.Read.installed()[package][1])
+    catch
+    end
     pkgver_out = IOBuffer()
     print(pkgver_out, pkgver)
     pkgver = takebuf_string(pkgver_out)
@@ -52,7 +56,7 @@ function collate(filenames::Vector;
                  pkgname=nothing,
                  pkgver=nothing,
                  pkgurl=nothing)
-    toc = {}
+    toc = Dict()
     titles = Dict()
 
     declaration_markdown = generate_declaration_markdown(declarations)
@@ -77,9 +81,16 @@ function collate(filenames::Vector;
         metadata, sections = weave(IOBuffer(doc), IOBuffer(), dryrun=true)
         title = get(metadata, "title", name)
         titles[name] = title
-        push!(toc, (get(metadata, "order", 0), name, title, sections))
+        part = get(metadata, "part", nothing)
+        if !haskey(toc, part)
+            toc[part] = {}
+        end
+
+        push!(toc[part], (get(metadata, "order", 0), name, title, sections))
     end
-    sort!(toc)
+    for part_content in values(toc)
+        sort!(part_content)
+    end
 
     pandoc_template = joinpath(template, "template.html")
 
@@ -146,23 +157,33 @@ end
 
 # Generate a table of contents for the given document.
 function table_of_contents(toc, selected_title::String)
+    parts = collect(keys(toc))
+    part_order = [minimum([order for (order, name, title, sections) in toc[part]])
+                  for part in parts]
+
     out = IOBuffer()
-    write(out, "<ul>\n")
-    for (order, name, title, sections) in toc
-        write(out, "<li>")
-        if title == selected_title
-            write(out,
-                """<div class="toc-current-doc">
-                     <a href="#topbar">$(title)</a>
-                   </div>\n
-                """)
-            write(out, table_of_contents_sections(sections))
-        else
-            @printf(out, "<a href=\"%s.html\">%s</a>", name, title)
+    for part in parts[sortperm(part_order)]
+        if part != nothing
+            write(out, "<div class="toc-part">$(part)</div>\n")
         end
-        write(out, "</li>")
+
+        write(out, "<ul>\n")
+        for (order, name, title, sections) in toc[part]
+            write(out, "<li>")
+            if title == selected_title
+                write(out,
+                    """<div class="toc-current-doc">
+                         <a href="#topbar">$(title)</a>
+                       </div>\n
+                    """)
+                write(out, table_of_contents_sections(sections))
+            else
+                @printf(out, "<a href=\"%s.html\">%s</a>", name, title)
+            end
+            write(out, "</li>")
+        end
+        write(out, "</ul>\n")
     end
-    write(out, "</ul>\n")
     takebuf_string(out)
 end
 
