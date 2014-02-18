@@ -78,9 +78,9 @@ function string_to_pandoc_json(s::String)
     out = {}
     for mat in eachmatch(r"\S+", s)
         if !isempty(out)
-            push!(out, "Space")
+            push!(out, {"t" => "Space", "c" => {}})
         end
-        push!(out, ["Str" => mat.match])
+        push!(out, {"t" => "Str", "c" => mat.match})
     end
     out
 end
@@ -141,8 +141,8 @@ end
 
 function display(doc::WeaveDoc, m::MIME"text/plain", data)
     block =
-        {"CodeBlock" =>
-           {{"", {"output"}, {}}, stringmime(m, data)}}
+        {"t" => "CodeBlock",
+         "c" => {{"", {"output"}, {}}, stringmime(m, data)}}
     push!(doc.display_blocks, block)
 end
 
@@ -178,8 +178,8 @@ function display(doc::WeaveDoc, m::MIME"image/svg+xml", data)
 
     if doc.outfmt == :html || doc.outfmt == :html5
         block =
-            {"RawBlock" =>
-              {"html",
+            {"t" => "RawBlock",
+             "c" => {"html",
                """
                <figure>
                  <object alt="$(alttext)" data="$(figurl)" type="image/svg+xml">
@@ -191,9 +191,10 @@ function display(doc::WeaveDoc, m::MIME"image/svg+xml", data)
                """}}
     else
         block =
-            {"Para" =>
-              {{"Image" =>
-                {{{"Str" => alttext}},
+            {"t" => "Para",
+             "c" => {
+                {"t" => "Image",
+                 "c" => {{{"Str" => alttext}},
                  {figurl, ""}}}}}
     end
 
@@ -213,10 +214,11 @@ function display(doc::WeaveDoc, m::MIME"image/png", data)
     caption = ""
 
     block =
-        {"Para" =>
-          {{"Image" =>
-            {{{"Str" => alttext}},
-             {figurl, ""}}}}}
+        {"t" => "Para",
+         "c" => {
+            {"t" => "Image",
+             "c" => {{{"Str" => alttext}},
+                     {figurl, ""}}}}}
 
     doc.fignum += 1
     push!(doc.display_blocks, block)
@@ -232,8 +234,8 @@ end
 
 
 function display(doc::WeaveDoc, m::MIME"text/html", data)
-    block = {"RawBlock" =>
-              {"html", stringmime(m, data)}}
+    block = {"t" => "RawBlock",
+             "c" =>  {"html", stringmime(m, data)}}
     push!(doc.display_blocks, block)
 end
 
@@ -276,7 +278,7 @@ function weave(input::IO, output::IO;
     metadata = nothing
     if !is(mat, nothing)
         metadata = YAML.load(bytestring(mat.match))
-        input_text = input_text[1+length(mat.match):]
+        input_text = input_text[1+length(mat.match):end]
     else
         metadata = Dict()
     end
@@ -284,6 +286,7 @@ function weave(input::IO, output::IO;
     # first pandoc pass
     pandoc_metadata, document =
         JSON.parse(pandoc(input_text, :markdown, :json))
+    pandoc_metadata = pandoc_metadata["unMeta"]
     prev_stdout = STDOUT
     stdout_read, stdout_write = redirect_stdout()
     doc = WeaveDoc(name, outfmt, stdout_read, stdout_write, outdir)
@@ -292,14 +295,15 @@ function weave(input::IO, output::IO;
     sections = {}
 
     for block in document
-        if isa(block, Dict) && haskey(block, "Header")
-            level, nameblocks = block["Header"]
+        if block["t"] == "Header"
+            level = block["c"][1]
+            nameblocks = block["c"][3]
             headername = IOBuffer()
             for subblock in nameblocks
-                if subblock == "Space"
+                if subblock["t"] == "Space"
                     write(headername, " ")
-                elseif isa(subblock, Dict)
-                    write(headername, subblock["Str"])
+                elseif subblock["t"] == "Str"
+                    write(headername, subblock["c"])
                 end
             end
             push!(sections, (level, takebuf_string(headername)))
@@ -308,7 +312,7 @@ function weave(input::IO, output::IO;
             end
         elseif dryrun
             continue
-        elseif isa(block, Dict) && haskey(block, "CodeBlock")
+        elseif block["t"] == "CodeBlock"
             try
                 process_code_block(doc, block)
             catch err
@@ -333,19 +337,23 @@ function weave(input::IO, output::IO;
         if haskey(metadata, key)
             if key == "author"
                 pandoc_metadata[pandoc_key] =
-                    {string_to_pandoc_json(metadata[key])}
+                    {"t" => "MetaInlines",
+                     "c" => string_to_pandoc_json(metadata[key])}
             elseif key == "authors"
                 if typeof(metadata[key]) <: AbstractArray
                     pandoc_metadata[pandoc_key] =
-                        {string_to_pandoc_json(author)
-                         for author in metadata[key]}
+                        {"t" => "MetaInlines",
+                         "c" => {string_to_pandoc_json(author)
+                                 for author in metadata[key]}}
                 else
                     pandoc_metadata[pandoc_key] =
-                        {string_to_pandoc_json(metadata[key])}
+                        {"t" => "MetaInlines",
+                         "c" => {string_to_pandoc_json(metadata[key])}}
                 end
             else
                 pandoc_metadata[pandoc_key] =
-                    string_to_pandoc_json(metadata[key])
+                    {"t" => "MetaInlines",
+                     "c" => string_to_pandoc_json(metadata[key])}
             end
         end
     end
@@ -355,7 +363,7 @@ function weave(input::IO, output::IO;
 
     # second pandoc pass
     buf = IOBuffer()
-    JSON.print(buf, {pandoc_metadata, doc.blocks})
+    JSON.print(buf, {{"unMeta" => pandoc_metadata}, doc.blocks})
 
     args = {}
     for (k, v) in keyvals
@@ -394,28 +402,26 @@ end
 # Returns:
 #   block
 #
-function process_block(block::Dict)
-    for (k, v) in block
-        if k == "Code"
-            (id, classes, keyvals), text = v
-            if "julia" in classes
-                out = eval(WeaveSandbox, parse(text))
-                v[2] = string(out)
-            end
-        else
-            block[k] = process_block(v)
-        end
-    end
-    block
-end
+#function process_block(block::Dict)
+    #if block["t"] == "Code"
+        #(id, classes, keyvals), text = block["c"]
+        #if "julia" in classes
+            #out = eval(WeaveSandbox, parse(text))
+            #block["c"] = string(out)
+        #end
+    #else
+        #block["c"] = process_block(block["c"])
+    #end
+    #return block
+#end
 
 
-function process_block(block::Array)
-    for i in 1:length(block)
-        block[i] = process_block(block[i])
-    end
-    block
-end
+#function process_block(block::Array)
+    #for i in 1:length(block)
+        #block[i] = process_block(block[i])
+    #end
+    #block
+#end
 
 
 function process_block(block::Any)
@@ -444,7 +450,7 @@ const code_block_classes = Set(
 #   block:: Code block.
 #
 function process_code_block(doc::WeaveDoc, block::Dict)
-    (id, classes, keyvals_array), text = block["CodeBlock"]
+    (id, classes, keyvals_array), text = block["c"]
     keyvals = [k => v for (k, v) in keyvals_array]
 
     # Options are:
@@ -491,7 +497,7 @@ function process_code_block(doc::WeaveDoc, block::Dict)
 
         if !keyvals["hide"]
             push!(doc.blocks,
-            {"CodeBlock" => {{id, {"julia", classes...}, keyvals_array}, output_text}})
+            {"t" => "CodeBlock", "c" => {{id, {"julia", classes...}, keyvals_array}, output_text}})
         end
 
         if keyvals["display"]

@@ -109,6 +109,7 @@ function collate(filenames::Vector;
     end
 
     for (name, doc) in docs
+        println(STDERR, "weaving ", name)
         fmt = :markdown
         title = titles[name]
         outfilename = joinpath(outdir, string(name, ".html"))
