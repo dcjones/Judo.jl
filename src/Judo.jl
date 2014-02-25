@@ -217,7 +217,7 @@ function display(doc::WeaveDoc, m::MIME"image/png", data)
         {"t" => "Para",
          "c" => {
             {"t" => "Image",
-             "c" => {{{"Str" => alttext}},
+             "c" => {{{"t" => "Str", "c" => alttext}},
                      {figurl, ""}}}}}
 
     doc.fignum += 1
