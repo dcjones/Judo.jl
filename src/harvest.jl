@@ -18,7 +18,7 @@ end
 const decl_comment_pat =
     r"
     ((?:\h*\#[^\n]*\n)+)
-    \h*(function|immutable|type|const)\s+([A-Za-z_][A-Za-z0-9_?]*)
+    \h*(function|immutable|type|const)\s+([A-Za-z_][A-Za-z0-9_?!]*)
     "xm
 
 
