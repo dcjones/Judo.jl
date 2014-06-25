@@ -184,7 +184,7 @@ end
 
 
 # pattern to match argument names/descriptions.
-const arg_desc_pat = r"^(\h*)([\w_][\w\d_\!]*)\h*:\h*(.*)\r?"m
+const arg_desc_pat = r"^(\h*)([\w_][\w\d_\!]*(?:\.\.\.)?)\h*:\h*(.*)\r?"m
 
 
 # Parse the "Args" section of a function declaration comment.
