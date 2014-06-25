@@ -1,11 +1,13 @@
 
+using DataStructures
+
 # Parse function and type documentation from julia source files.
 
 
 # Metadata parsed from a declarations's preceeding comment.
 type DeclarationComment
     description::String
-    args::Union(Dict, Nothing)
+    args::Union(OrderedDict, Nothing)
     sections::Dict
 
     function DeclarationComment(description)
@@ -196,7 +198,7 @@ const arg_desc_pat = r"^(\h*)([\w_][\w\d_\!]*(?:\.\.\.)?)\h*:\h*(.*)\r?"m
 #   A dictionary mapping arugment names to their descriptions.
 #
 function parse_comment_args(input::String)
-    args = Dict()
+    args = OrderedDict()
     mat = match(arg_desc_pat, input)
     while mat != nothing
         indent = length(mat.captures[1])
