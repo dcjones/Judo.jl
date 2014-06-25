@@ -21,6 +21,16 @@ const decl_comment_pat =
     \h*(function|immutable|abstract|type|const)\s+([A-Za-z_][A-Za-z0-9_?!]*)
     "xm
 
+# pattern to extract comments immediately preceeding
+# assignment style function declarations.
+const compact_decl_comment_pat =
+    r"
+    ((?:\h*\#[^\n]*\n)+)              # comments
+    \h*([A-Za-z_][A-Za-z0-9_?!]*)     # function name
+    \h*((?:\{(?:[^{}]++|(?-1))*+\})?) # type parameters (balanced braces)
+    \h*(\((?:[^()]++|(?-1))*+\))      # balanced parenthesis
+    \h*=[^=]                          # assignment and not ==
+    "xm
 
 # pattern to strip leading whitespace and '#' characters from comments.
 const comment_strip_pat = r"\h*\#+"
@@ -37,9 +47,14 @@ const comment_strip_pat = r"\h*\#+"
 #
 function extract_declaration_comments(input::String)
     mats = {}
+    comment_strip(txt) = replace(txt, comment_strip_pat, "")
+
     for mat in eachmatch(decl_comment_pat, input)
-        push!(mats, (mat.captures[3],
-                     replace(mat.captures[1], comment_strip_pat, "")))
+        push!(mats, (mat.captures[3], comment_strip(mat.captures[1])))
+    end
+
+    for mat in eachmatch(compact_decl_comment_pat, input)
+        push!(mats, (mat.captures[2], comment_strip(mat.captures[1])))
     end
     mats
 end
