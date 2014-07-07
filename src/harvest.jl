@@ -1,11 +1,13 @@
 
+using DataStructures
+
 # Parse function and type documentation from julia source files.
 
 
 # Metadata parsed from a declarations's preceeding comment.
 type DeclarationComment
     description::String
-    args::Union(Dict, Nothing)
+    args::Union(OrderedDict, Nothing)
     sections::Dict
 
     function DeclarationComment(description)
@@ -18,9 +20,19 @@ end
 const decl_comment_pat =
     r"
     ((?:\h*\#[^\n]*\n)+)
-    \h*(function|immutable|type|const)\s+([A-Za-z_][A-Za-z0-9_?]*)
+    \h*(function|immutable|abstract|type|const)\s+([A-Za-z_][A-Za-z0-9_?!]*)
     "xm
 
+# pattern to extract comments immediately preceeding
+# assignment style function declarations.
+const compact_decl_comment_pat =
+    r"
+    ((?:\h*\#[^\n]*\n)+)              # comments
+    \h*([A-Za-z_][A-Za-z0-9_?!]*)     # function name
+    \h*((?:\{(?:[^{}]++|(?-1))*+\})?) # type parameters (balanced braces)
+    \h*(\((?:[^()]++|(?-1))*+\))      # balanced parenthesis
+    \h*=[^=]                          # assignment and not ==
+    "xm
 
 # pattern to strip leading whitespace and '#' characters from comments.
 const comment_strip_pat = r"\h*\#+"
@@ -37,9 +49,14 @@ const comment_strip_pat = r"\h*\#+"
 #
 function extract_declaration_comments(input::String)
     mats = {}
+    comment_strip(txt) = replace(txt, comment_strip_pat, "")
+
     for mat in eachmatch(decl_comment_pat, input)
-        push!(mats, (mat.captures[3],
-                     replace(mat.captures[1], comment_strip_pat, "")))
+        push!(mats, (mat.captures[3], comment_strip(mat.captures[1])))
+    end
+
+    for mat in eachmatch(compact_decl_comment_pat, input)
+        push!(mats, (mat.captures[2], comment_strip(mat.captures[1])))
     end
     mats
 end
@@ -169,7 +186,7 @@ end
 
 
 # pattern to match argument names/descriptions.
-const arg_desc_pat = r"^(\h*)([\w_][\w\d_\!]*)\h*:\h*(.*)\r?"m
+const arg_desc_pat = r"^(\h*)([\w_][\w\d_\!]*(?:\.\.\.)?)\h*:\h*(.*)\r?"m
 
 
 # Parse the "Args" section of a function declaration comment.
@@ -181,7 +198,7 @@ const arg_desc_pat = r"^(\h*)([\w_][\w\d_\!]*)\h*:\h*(.*)\r?"m
 #   A dictionary mapping arugment names to their descriptions.
 #
 function parse_comment_args(input::String)
-    args = Dict()
+    args = OrderedDict()
     mat = match(arg_desc_pat, input)
     while mat != nothing
         indent = length(mat.captures[1])
