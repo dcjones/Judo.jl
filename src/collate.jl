@@ -55,7 +55,8 @@ function collate(filenames::Vector;
                  declarations::Dict=Dict(),
                  pkgname=nothing,
                  pkgver=nothing,
-                 pkgurl=nothing)
+                 pkgurl=nothing,
+                 pandocargs=nothing)
     toc = Dict()
     titles = Dict()
 
@@ -118,7 +119,8 @@ function collate(filenames::Vector;
         metadata, sections = weave(IOBuffer(doc), outfile,
                                    name=name, template=pandoc_template,
                                    toc=true, outdir=outdir,
-                                   keyvals=keyvals)
+                                   keyvals=keyvals,
+                                   pandocargs=pandocargs)
         close(outfile)
     end
 

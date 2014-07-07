@@ -24,6 +24,11 @@ ap = ArgParseSettings("Generate documentation.")
     "--package"
         help = "build a package's documentation"
         action = :store_true
+    "--pandocargs"
+        help = "extra arguments for pandoc"
+        default = nothing
+
+
 end
 
 args = ArgParse.parse_args(ap)
@@ -31,6 +36,6 @@ args = ArgParse.parse_args(ap)
 if args["package"]
     Judo.collate(args["filename"])
 else
-    Judo.collate([args["filename"]], template=args["template"], outdir=args["out"])
+    Judo.collate([args["filename"]], template=args["template"], outdir=args["out"], pandocargs=args["pandocargs"])
 end
 
