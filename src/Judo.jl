@@ -270,7 +270,8 @@ writemime(io, m::MIME"text/latex", data::String) = write(io, data)
 function weave(input::IO, output::IO;
                outfmt=:html5, name="judo", template=nothing,
                toc::Bool=false, outdir::String=".", dryrun::Bool=false,
-               keyvals::Dict=Dict())
+               keyvals::Dict=Dict(),
+               pandocargs=nothing)
     input_text = readall(input)
 
     # parse yaml front matter
@@ -377,6 +378,11 @@ function weave(input::IO, output::IO;
     if toc
         push!(args, "--toc")
     end
+
+    if pandocargs != nothing
+        push!(args, pandocargs)
+    end
+
 
     write(output, pandoc(takebuf_string(buf), :json, outfmt, args...))
 
