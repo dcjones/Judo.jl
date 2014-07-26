@@ -10,7 +10,7 @@ const pkgurl_pat = r"github.com/(.*)\.git$"
 
 
 # Generate documentation from the given package.
-function collate(package::String)
+function collate(package::String; template::String="default")
     declarations = harvest(package)
 
     pkgver = ""
@@ -43,8 +43,8 @@ function collate(package::String)
         mkdir(outdir)
     end
 
-    collate(filenames, outdir=outdir, pkgname=package, pkgver=pkgver,
-            pkgurl=pkgurl, declarations=declarations)
+    collate(filenames, template=template, outdir=outdir, pkgname=package,
+            pkgver=pkgver, pkgurl=pkgurl, declarations=declarations)
 end
 
 
@@ -158,6 +158,9 @@ function choose_document_name(filename::String)
 end
 
 
+# TODO: It would be better if I can make this one <ul>, that way I could use
+# List.js. How can I retain roughly the same style though.
+
 # Generate a table of contents for the given document.
 function table_of_contents(toc, selected_title::String)
     parts = collect(keys(toc))
@@ -165,28 +168,32 @@ function table_of_contents(toc, selected_title::String)
                   for part in parts]
 
     out = IOBuffer()
+    write(out, "<ul class=\"toc list\">")
     for part in parts[sortperm(part_order)]
         if part != nothing
-            write(out, """<hr><div class="toc-part">$(part)</div>\n""")
+            write(out,
+                """
+                <li>
+                    <hr><div class="toc-part">$(part)</div>
+                </li>
+                """)
         end
 
-        write(out, "<ul>\n")
         for (order, name, title, sections) in toc[part]
-            write(out, "<li>")
-            if title == selected_title
-                write(out,
-                    """<div class="toc-current-doc">
-                         <a href="#topbar">$(title)</a>
-                       </div>\n
-                    """)
+            classes = title == selected_title ?
+                "toc-item toc-current-doc" : "toc-item"
+
+            write(out,
+                """
+                <li>
+                    <div class="$(classes)"><a href="$(name)">$(title)</a></div>
+                </li>
+                """)
+
                 write(out, table_of_contents_sections(sections))
-            else
-                @printf(out, "<a href=\"%s.html\">%s</a>", name, title)
-            end
-            write(out, "</li>")
         end
-        write(out, "</ul>\n")
     end
+    write(out, "</ul>")
     takebuf_string(out)
 end
 
@@ -204,25 +211,21 @@ function table_of_contents_sections(sections; maxlevel=2)
         end
 
         while level > current_level
-            write(out, "<ul>\n")
             current_level += 1
         end
 
         while level < current_level
-            write(out, "</ul>\n")
             current_level -= 1
         end
 
-        @printf(out, "<li><a href=\"#%s\">%s</a/></li>\n",
-                section_id(section), section)
-
+        write(out,
+            """
+            <li>
+                <div style="margin-left: $(level)em" class="toc-item"><a href=\"#$(section_id(section))\">$(section)</div></a/>
+            </li>
+            """)
     end
-
-    while current_level > 0
-        write(out, "</ul>\n")
-        current_level -= 1
-    end
-    takebuf_string(out)
+    return takebuf_string(out)
 end
 
 

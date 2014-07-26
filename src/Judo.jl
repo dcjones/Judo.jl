@@ -3,17 +3,11 @@ module Judo
 
 import Base: start, next, done, display, writemime
 import JSON
-import YAML
 import Mustache
-
 
 include("walkdir.jl")
 include("harvest.jl")
 include("collate.jl")
-
-
-# Pattern used to extract YAML metadata from the front on input documents.
-const frontmatter_pattern = r"\A\s*^---$.*^\.\.\.$"sm
 
 # An iterator for the parse function: parsit(source) will iterate over the
 # expressiosn in a string.
@@ -235,7 +229,8 @@ end
 
 function display(doc::WeaveDoc, m::MIME"text/html", data)
     block = {"t" => "RawBlock",
-             "c" =>  {"html", stringmime(m, data)}}
+             "c" =>  {"html",
+                string("<div class=\"judo-result\">\n", stringmime(m, data), "\n</div>")}}
     push!(doc.display_blocks, block)
 end
 
@@ -246,6 +241,38 @@ writemime(io, m::MIME"image/vnd.graphviz", data::String) = write(io, data)
 writemime(io, m::MIME"image/svg+xml", data::String) = write(io, data)
 writemime(io, m::MIME"text/latex", data::String) = write(io, data)
 
+
+# Turn YAML frontmatter parsed by pandoc into simplified julia structure.
+#
+# Args:
+#   pandoc_metadata: YAML fontmatter parsed by pandoc then by JSON
+#
+# Returns:
+#   A (String => String) dictionary with key value pairs.
+#
+function flatten_pandoc_metadata(pandoc_metadata::Dict)
+    metadata = Dict{String, String}()
+    for (key, val) in pandoc_metadata["unMeta"]
+        if val["t"] != "MetaInlines"
+            continue
+        end
+        metadata[key] = flatten_pandoc_metainlines(val["c"])
+    end
+    return metadata
+end
+
+
+function flatten_pandoc_metainlines(pandoc_metainlines::Vector)
+    buf = IOBuffer()
+    for val in pandoc_metainlines
+        if val["t"] == "Str"
+            write(buf, val["c"])
+        elseif val["t"] == "Space"
+            write(buf, " ")
+        end
+    end
+    return takebuf_string(buf)
+end
 
 # Transform a annotated markdown file into a variety of formats.
 #
@@ -274,19 +301,10 @@ function weave(input::IO, output::IO;
                pandocargs=nothing)
     input_text = readall(input)
 
-    # parse yaml front matter
-    mat = match(frontmatter_pattern, input_text)
-    metadata = nothing
-    if !is(mat, nothing)
-        metadata = YAML.load(bytestring(mat.match))
-        input_text = input_text[1+length(mat.match):end]
-    else
-        metadata = Dict()
-    end
-
     # first pandoc pass
     pandoc_metadata, document =
         JSON.parse(pandoc(input_text, :markdown, :json))
+    metadata = flatten_pandoc_metadata(pandoc_metadata)
     pandoc_metadata = pandoc_metadata["unMeta"]
     prev_stdout = STDOUT
     stdout_read, stdout_write = redirect_stdout()
@@ -328,42 +346,19 @@ function weave(input::IO, output::IO;
         return metadata, sections
     end
 
-    # splice in metadata fields that pandoc supports
-    pandoc_metadata_keys = ["title"   => "docTitle",
-                            "authors" => "docAuthors",
-                            "author"  => "docAuthors",
-                            "date"    => "docDate"]
-
-    for (key, pandoc_key) in pandoc_metadata_keys
-        if haskey(metadata, key)
-            if key == "author"
-                pandoc_metadata[pandoc_key] =
-                    {"t" => "MetaInlines",
-                     "c" => string_to_pandoc_json(metadata[key])}
-            elseif key == "authors"
-                if typeof(metadata[key]) <: AbstractArray
-                    pandoc_metadata[pandoc_key] =
-                        {"t" => "MetaInlines",
-                         "c" => {string_to_pandoc_json(author)
-                                 for author in metadata[key]}}
-                else
-                    pandoc_metadata[pandoc_key] =
-                        {"t" => "MetaInlines",
-                         "c" => {string_to_pandoc_json(metadata[key])}}
-                end
-            else
-                pandoc_metadata[pandoc_key] =
-                    {"t" => "MetaInlines",
-                     "c" => string_to_pandoc_json(metadata[key])}
-            end
-        end
-    end
-
     popdisplay(doc)
-    Base.reinit_stdio()
+    redirect_stdout(prev_stdout)
+    #Base.reinit_stdio()
 
     # second pandoc pass
     buf = IOBuffer()
+
+    # splice the document's creation date into pandoc's metadata
+    pandoc_metadata["today"] =
+        {"t" => "MetaInlines",
+         "c" => {{"t" => "Str",
+                  "c" => strip(readall(`date`))}}}
+
     JSON.print(buf, {{"unMeta" => pandoc_metadata}, doc.blocks})
 
     args = {}
@@ -438,11 +433,10 @@ end
 
 # Code block classes supported.
 const code_block_classes = Set(
-    "julia",
-    "graphviz",
-    "latex",
-    "svg"
-)
+    ["julia",
+     "graphviz",
+     "latex",
+     "svg"])
 
 
 
@@ -507,11 +501,13 @@ function process_code_block(doc::WeaveDoc, block::Dict)
         end
 
         if keyvals["display"]
-            # TODO: Is there a way to check for output without this dirty trick?
-            write(doc.stdout_write, '.')
-            stdout_output = readavailable(doc.stdout_read)[1:end-1]
-            if !isempty(stdout_output)
-                display("text/plain", stdout_output)
+            flush(doc.stdout_read)
+            flush(doc.stdout_write)
+            if nb_available(doc.stdout_read) > 0
+                stdout_output = readavailable(doc.stdout_read)
+                if !isempty(stdout_output)
+                    display("text/plain", stdout_output)
+                end
             end
             append!(doc.blocks, doc.display_blocks)
         end
