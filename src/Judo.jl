@@ -253,10 +253,11 @@ writemime(io, m::MIME"text/latex", data::String) = write(io, data)
 function flatten_pandoc_metadata(pandoc_metadata::Dict)
     metadata = Dict{String, String}()
     for (key, val) in pandoc_metadata["unMeta"]
-        if val["t"] != "MetaInlines"
-            continue
+        if val["t"] == "MetaInlines"
+            metadata[key] = flatten_pandoc_metainlines(val["c"])
+        elseif val["t"] == "MetaString"
+            metadata[key] = val["c"]
         end
-        metadata[key] = flatten_pandoc_metainlines(val["c"])
     end
     return metadata
 end
@@ -377,7 +378,6 @@ function weave(input::IO, output::IO;
     if pandocargs != nothing
         push!(args, pandocargs)
     end
-
 
     write(output, pandoc(takebuf_string(buf), :json, outfmt, args...))
 

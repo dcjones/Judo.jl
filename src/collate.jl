@@ -87,7 +87,7 @@ function collate(filenames::Vector;
             toc[part] = {}
         end
 
-        push!(toc[part], (get(metadata, "order", 0), name, title, sections))
+        push!(toc[part], (parseint(get(metadata, "order", "0")), name, title, sections))
     end
     for part_content in values(toc)
         sort!(part_content)
@@ -158,17 +158,13 @@ function choose_document_name(filename::String)
 end
 
 
-# TODO: It would be better if I can make this one <ul>, that way I could use
-# List.js. How can I retain roughly the same style though.
-
 # Generate a table of contents for the given document.
 function table_of_contents(toc, selected_title::String)
     parts = collect(keys(toc))
     part_order = [minimum([order for (order, name, title, sections) in toc[part]])
                   for part in parts]
-
     out = IOBuffer()
-    write(out, "<ul class=\"toc list\">")
+    write(out, "<ul class=\"toc list nav\">")
     for part in parts[sortperm(part_order)]
         if part != nothing
             write(out,
@@ -186,11 +182,12 @@ function table_of_contents(toc, selected_title::String)
             write(out,
                 """
                 <li>
-                    <div class="$(classes)"><a href="$(name)">$(title)</a></div>
+                    <a class="$(classes)" href="$(name).html">$(title)</a>
                 </li>
                 """)
 
-                write(out, table_of_contents_sections(sections))
+                write(out, table_of_contents_sections(sections,
+                    maxlevel=title == selected_title ? 2 : 0))
         end
     end
     write(out, "</ul>")
@@ -198,7 +195,7 @@ function table_of_contents(toc, selected_title::String)
 end
 
 
-function table_of_contents_sections(sections; maxlevel=2)
+function table_of_contents_sections(sections; maxlevel=1)
     if isempty(sections)
         return ""
     end
@@ -221,7 +218,7 @@ function table_of_contents_sections(sections; maxlevel=2)
         write(out,
             """
             <li>
-                <div style="margin-left: $(level)em" class="toc-item"><a href=\"#$(section_id(section))\">$(section)</div></a/>
+                <a style="margin-left: $(0.5 * level)em" class="toc-item" href=\"#$(section_id(section))\">$(section)</a>
             </li>
             """)
     end
