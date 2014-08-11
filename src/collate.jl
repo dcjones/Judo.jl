@@ -48,7 +48,7 @@ function collate(package::String; template::String="default")
 end
 
 
-# Generate documentation from a multiple files.
+# Generate documentation from multiple files.
 function collate(filenames::Vector;
                  template::String="default",
                  outdir::String=".",
@@ -186,11 +186,11 @@ function table_of_contents(toc, selected_title::String)
             write(out,
                 """
                 <li>
-                    <div class="$(classes)"><a href="$(name)">$(title)</a></div>
+                    <div class="$(classes)"><a href="$(name).html">$(title)</a></div>
                 </li>
                 """)
 
-                write(out, table_of_contents_sections(sections))
+                write(out, table_of_contents_sections(name, sections))
         end
     end
     write(out, "</ul>")
@@ -198,7 +198,7 @@ function table_of_contents(toc, selected_title::String)
 end
 
 
-function table_of_contents_sections(sections; maxlevel=2)
+function table_of_contents_sections(parent, sections; maxlevel=2)
     if isempty(sections)
         return ""
     end
@@ -221,7 +221,7 @@ function table_of_contents_sections(sections; maxlevel=2)
         write(out,
             """
             <li>
-                <div style="margin-left: $(level)em" class="toc-item"><a href=\"#$(section_id(section))\">$(section)</div></a/>
+                <div style="margin-left: $(level)em" class="toc-item"><a href=\"$(parent).html#$(section_id(section))\">$(section)</div></a/>
             </li>
             """)
     end
