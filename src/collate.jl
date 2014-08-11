@@ -48,7 +48,7 @@ function collate(package::String; template::String="default")
 end
 
 
-# Generate documentation from a multiple files.
+# Generate documentation from multiple files.
 function collate(filenames::Vector;
                  template::String="default",
                  outdir::String=".",
@@ -186,7 +186,7 @@ function table_of_contents(toc, selected_title::String)
                 </li>
                 """)
 
-                write(out, table_of_contents_sections(sections,
+                write(out, table_of_contents_sections(name, sections,
                     maxlevel=title == selected_title ? 2 : 0))
         end
     end
@@ -195,7 +195,7 @@ function table_of_contents(toc, selected_title::String)
 end
 
 
-function table_of_contents_sections(sections; maxlevel=1)
+function table_of_contents_sections(parent, sections; maxlevel=2)
     if isempty(sections)
         return ""
     end
@@ -218,7 +218,7 @@ function table_of_contents_sections(sections; maxlevel=1)
         write(out,
             """
             <li>
-                <a style="margin-left: $(0.5 * level)em" class="toc-item" href=\"#$(section_id(section))\">$(section)</a>
+                <a style="margin-left: $(0.5 * level)em" class="toc-item" href=\"$(parent).html#$(section_id(section))\">$(section)</a>
             </li>
             """)
     end
@@ -228,6 +228,8 @@ end
 
 # Turn a section name into an html id.
 function section_id(section::String)
-    lowercase(replace(section, r"\s+", "-"))
+    # Keep only unicode letters, _ and -
+    cleaned = replace(section, r"[^\p{L}_-\s]", "")
+    lowercase(replace(cleaned, r"\s+", "-"))
 end
 
