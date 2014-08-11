@@ -6,12 +6,13 @@ using DataStructures
 
 # Metadata parsed from a declarations's preceeding comment.
 type DeclarationComment
+    decltype::String
     description::String
     args::Union(OrderedDict, Nothing)
     sections::Dict
 
-    function DeclarationComment(description)
-        new(description, nothing, Dict())
+    function DeclarationComment(decltype, description)
+        new(decltype, description, nothing, Dict())
     end
 end
 
@@ -20,7 +21,7 @@ end
 const decl_comment_pat =
     r"
     ((?:\h*\#[^\n]*\n)+)
-    \h*(function|immutable|abstract|type|const)\s+([A-Za-z_][A-Za-z0-9_?!]*)
+    \h*(function|macro|immutable|abstract|type|const)\s+([A-Za-z_][A-Za-z0-9_?!]*)
     "xm
 
 # pattern to extract comments immediately preceeding
@@ -52,11 +53,11 @@ function extract_declaration_comments(input::String)
     comment_strip(txt) = replace(txt, comment_strip_pat, "")
 
     for mat in eachmatch(decl_comment_pat, input)
-        push!(mats, (mat.captures[3], comment_strip(mat.captures[1])))
+        push!(mats, (mat.captures[2], mat.captures[3], comment_strip(mat.captures[1])))
     end
 
     for mat in eachmatch(compact_decl_comment_pat, input)
-        push!(mats, (mat.captures[2], comment_strip(mat.captures[1])))
+        push!(mats, ("function", mat.captures[2], comment_strip(mat.captures[1])))
     end
     mats
 end
@@ -93,8 +94,11 @@ end
 function harvest(filenames::Vector)
     declarations = Dict()
     for filename in filenames
-        for (name, comment) in extract_declaration_comments(readall(filename))
-            declarations[name] = parse_comment(comment)
+        for (decltype, name, comment) in extract_declaration_comments(readall(filename))
+            if decltype == "macro"
+                name = string("@", name)
+            end
+            declarations[name] = parse_comment(decltype, comment)
         end
     end
     declarations
@@ -159,13 +163,13 @@ const func_field_pat = r"^\h*(Args|Returns|Modifies|Throws)\s*:\h*\r?\n"im
 # Returns:
 #   A DeclarationComment object.
 #
-function parse_comment(input::String)
+function parse_comment(decltype, input::String)
     mat = match(func_field_pat, input)
     if mat == nothing
-        return DeclarationComment(strip(input))
+        return DeclarationComment(decltype, strip(input))
     end
 
-    metadata = DeclarationComment(input[1:mat.offset-1])
+    metadata = DeclarationComment(decltype, input[1:mat.offset-1])
     while mat != nothing
         typ = mat.captures[1]
         if typ == "Args"
