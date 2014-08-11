@@ -176,7 +176,9 @@ function table_of_contents(toc, selected_title::String)
         end
 
         for (order, name, title, sections) in toc[part]
-            classes = title == selected_title ?
+            iscurrent = title == selected_title
+
+            classes = iscurrent ?
                 "toc-item toc-current-doc" : "toc-item"
 
             write(out,
@@ -186,8 +188,8 @@ function table_of_contents(toc, selected_title::String)
                 </li>
                 """)
 
-                write(out, table_of_contents_sections(name, sections,
-                    maxlevel=title == selected_title ? 2 : 0))
+                write(out, table_of_contents_sections(name, sections, iscurrent,
+                    maxlevel=iscurrent ? 2 : 0))
         end
     end
     write(out, "</ul>")
@@ -195,7 +197,7 @@ function table_of_contents(toc, selected_title::String)
 end
 
 
-function table_of_contents_sections(parent, sections; maxlevel=2)
+function table_of_contents_sections(parent, sections, iscurrent; maxlevel=2)
     if isempty(sections)
         return ""
     end
@@ -215,10 +217,14 @@ function table_of_contents_sections(parent, sections; maxlevel=2)
             current_level -= 1
         end
 
+        href = iscurrent ?
+            "#$(section_id(section))" :
+            "$(parent).html#$(section_id(section))"
+
         write(out,
             """
             <li>
-                <a style="margin-left: $(0.5 * level)em" class="toc-item" href=\"$(parent).html#$(section_id(section))\">$(section)</a>
+                <a style="margin-left: $(0.5 * level)em" class="toc-item" href=\"$(href)\">$(section)</a>
             </li>
             """)
     end
