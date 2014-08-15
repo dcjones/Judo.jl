@@ -275,6 +275,25 @@ function flatten_pandoc_metainlines(pandoc_metainlines::Vector)
     return takebuf_string(buf)
 end
 
+
+# Strip parsed pandoc JSON to a plain text representation.
+function plaintext(blocks::Array)
+    buf = IOBuffer()
+    atstart = true
+    for block in blocks
+        if block["t"] == "Space"
+            write(buf, " ")
+        elseif block["t"] == "Str"
+            write(buf, block["c"])
+        elseif block["t"] == "Cite"
+            write(buf, plaintext(block["c"][2]))
+        end
+        atstart = false
+    end
+    return takebuf_string(buf)
+end
+
+
 # Transform a annotated markdown file into a variety of formats.
 #
 # This reads markdown input, optionally prefixed with a YAML metadata document,
@@ -317,16 +336,8 @@ function weave(input::IO, output::IO;
     for block in document
         if block["t"] == "Header"
             level = block["c"][1]
-            nameblocks = block["c"][3]
-            headername = IOBuffer()
-            for subblock in nameblocks
-                if subblock["t"] == "Space"
-                    write(headername, " ")
-                elseif subblock["t"] == "Str"
-                    write(headername, subblock["c"])
-                end
-            end
-            push!(sections, (level, takebuf_string(headername)))
+            headername = plaintext(block["c"][3])
+            push!(sections, (level, headername))
             if !dryrun
                 push!(doc.blocks, process_block(block))
             end
