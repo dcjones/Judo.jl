@@ -235,7 +235,7 @@ end
 # Turn a section name into an html id.
 function section_id(section::String)
     # Keep only unicode letters, _ and -
-    cleaned = replace(section, r"[^\p{L}_-\s]", "")
+    cleaned = replace(section, r"[^\p{L}_\-\s]", "")
     lowercase(replace(cleaned, r"\s+", "-"))
 end
 
