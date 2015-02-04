@@ -398,8 +398,13 @@ end
 
 # Evaluate the truthiness of a code block attribute.
 function codeblock_keyval_bool(keyvals::Dict, key, default::Bool)
-    haskey(keyvals, key) ?
-        lowercase(strip(keyvals[key])) != "false" : default
+    if haskey(keyvals, key)
+        val = lowercase(strip(keyvals[key]))
+        @assert val == "true" || val == "false"
+        val == "true"
+    else
+        default
+    end
 end
 
 
