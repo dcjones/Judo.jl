@@ -19,7 +19,7 @@ quick-and-dirty analysis, as painless as possible.
 # Status
 
 This is work in progress. I'm using it to generate [documentation for
-Gadfly](http://dcjones.github.io/Gadfly.jl/), and figuring out the details as I
+Gadfly](http://gadflyjl.org/), and figuring out the details as I
 go along. Contributions or feedback is welcomed.
 
 
