@@ -11,7 +11,10 @@ const pkgurl_pat = r"github.com/(.*)\.git$"
 
 # Generate documentation from the given package.
 function collate(package::String; template::String="default")
-    declarations = harvest(package)
+    # TODO: We need to somehow load the package to make sure docstrings are all
+    # there.
+    #declarations = harvest(package)
+    declarations = Dict()
 
     pkgver = ""
     try
@@ -31,7 +34,7 @@ function collate(package::String; template::String="default")
     catch
     end
 
-    filenames = {}
+    filenames = UTF8String[]
     for filename in walkdir(joinpath(Pkg.dir(package), "doc"))
         if match(ext_doc_pat, filename) != nothing
             push!(filenames, filename)
@@ -48,6 +51,28 @@ function collate(package::String; template::String="default")
 end
 
 
+
+"""
+Table of contents entry containing sections within one document.
+"""
+immutable TOCEntry
+    order::Int
+    name::UTF8String
+    title::UTF8String
+    sections::Vector{Markdown.Header}
+end
+
+
+function Base.isless(a::TOCEntry, b::TOCEntry)
+    return a.order < b.order
+end
+
+
+function level{L}(::Markdown.Header{L})
+    return L
+end
+
+
 # Generate documentation from multiple files.
 function collate(filenames::Vector;
                  template::String="default",
@@ -55,12 +80,11 @@ function collate(filenames::Vector;
                  declarations::Dict=Dict(),
                  pkgname=nothing,
                  pkgver=nothing,
-                 pkgurl=nothing,
-                 pandocargs=nothing)
-    toc = Dict()
-    titles = Dict()
+                 pkgurl=nothing)
+    toc = Dict{Nullable{UTF8String}, Vector{TOCEntry}}()
+    titles = Dict{UTF8String, UTF8String}()
 
-    declaration_markdown = generate_declaration_markdown(declarations)
+    #declaration_markdown = generate_declaration_markdown(declarations)
 
     if !isdir(template)
         template = joinpath(Pkg.dir("Judo"), "templates", template)
@@ -70,57 +94,64 @@ function collate(filenames::Vector;
     end
 
     # make any expansions necessary in the original document
+    # TODO: insert docstrings
     docs = Dict()
     for filename in filenames
         name = choose_document_name(filename)
-        docs[name] = expand_declaration_docs(readall(filename),
-                                             declaration_markdown)
+        docs[name] = readall(filename)
+        #docs[name] = expand_declaration_docs(readall(filename),
+                                             #declaration_markdown)
     end
 
     # dry-run to collect the section names in each document
     for (name, doc) in docs
-        metadata, sections = weave(IOBuffer(doc), IOBuffer(), dryrun=true)
+        metadata, sections = process(doc, Nullable{IO}())
         title = get(metadata, "title", name)
         titles[name] = title
-        part = get(metadata, "part", nothing)
+
+        part = haskey(metadata, "part") ?
+            Nullable{UTF8String}(metadata["part"]) : Nullable{UTF8String}()
         if !haskey(toc, part)
-            toc[part] = {}
+            toc[part] = TOCEntry[]
         end
 
-        push!(toc[part], (parseint(get(metadata, "order", "0")), name, title, sections))
+        push!(toc[part],
+            TOCEntry(get(metadata, "order", 0), name, title, sections))
     end
+
     for part_content in values(toc)
         sort!(part_content)
     end
 
     pandoc_template = joinpath(template, "template.html")
 
-    keyvals = Dict()
+    metadata = Dict{UTF8String, UTF8String}()
 
     if pkgname != nothing
-        keyvals["pkgname"] = pkgname
+        metadata["pkgname"] = pkgname
     end
 
     if pkgver != nothing
-        keyvals["pkgver"] = pkgver
+        metadata["pkgver"] = pkgver
     end
 
     if pkgurl != nothing
-        keyvals["pkgurl"] = pkgurl
+        metadata["pkgurl"] = pkgurl
     end
 
     for (name, doc) in docs
-        println(STDERR, "weaving ", name)
+        println(STDERR, "processing ", name)
         fmt = :markdown
         title = titles[name]
         outfilename = joinpath(outdir, string(name, ".html"))
         outfile = open(outfilename, "w")
-        keyvals["table-of-contents"] = table_of_contents(toc, title)
-        metadata, sections = weave(IOBuffer(doc), outfile,
-                                   name=name, template=pandoc_template,
-                                   toc=true, outdir=outdir,
-                                   keyvals=keyvals,
-                                   pandocargs=pandocargs)
+        metadata["table-of-contents"] = table_of_contents(toc, title)
+        metadata["name"] = name
+        process(doc, Nullable{IO}(outfile),
+                template=Nullable{UTF8String}(pandoc_template),
+                toc=true,
+                outdir=outdir,
+                metadata=metadata)
         close(outfile)
     end
 
@@ -161,22 +192,22 @@ end
 # Generate a table of contents for the given document.
 function table_of_contents(toc, selected_title::String)
     parts = collect(keys(toc))
-    part_order = [minimum([order for (order, name, title, sections) in toc[part]])
+    part_order = [minimum([entry.order for entry in toc[part]])
                   for part in parts]
     out = IOBuffer()
     write(out, "<ul class=\"toc list nav\">")
     for part in parts[sortperm(part_order)]
-        if part != nothing
+        if !isnull(part)
             write(out,
                 """
                 <li>
-                    <hr><div class="toc-part">$(part)</div>
+                    <hr><div class="toc-part">$(get(part))</div>
                 </li>
                 """)
         end
 
-        for (order, name, title, sections) in toc[part]
-            iscurrent = title == selected_title
+        for entry in toc[part]
+            iscurrent = entry.title == selected_title
 
             classes = iscurrent ?
                 "toc-item toc-current-doc" : "toc-item"
@@ -184,12 +215,12 @@ function table_of_contents(toc, selected_title::String)
             write(out,
                 """
                 <li>
-                    <a class="$(classes)" href="$(name).html">$(title)</a>
+                    <a class="$(classes)" href="$(entry.name).html">$(entry.title)</a>
                 </li>
                 """)
 
-                write(out, table_of_contents_sections(name, sections, iscurrent,
-                    maxlevel=iscurrent ? 2 : 0))
+                write(out, table_of_contents_sections(
+                    entry.name, entry.sections,iscurrent, maxlevel=iscurrent ? 2 : 0))
         end
     end
     write(out, "</ul>")
@@ -204,27 +235,28 @@ function table_of_contents_sections(parent, sections, iscurrent; maxlevel=2)
 
     out = IOBuffer()
     current_level = 0
-    for (level, section) in sections
-        if level > maxlevel
+    for section in sections
+        if level(section) > maxlevel
             continue
         end
 
-        while level > current_level
+        while level(section) > current_level
             current_level += 1
         end
 
-        while level < current_level
+        while level(section) < current_level
             current_level -= 1
         end
 
+        text = section.text[1]
         href = iscurrent ?
-            "#$(section_id(section))" :
-            "$(parent).html#$(section_id(section))"
+            "#$(section_id(text))" :
+            "$(parent).html#$(section_id(text))"
 
         write(out,
             """
             <li>
-                <a style="margin-left: $(0.5 * level)em" class="toc-item" href=\"$(href)\">$(section)</a>
+                <a style="margin-left: $(0.5 * level(section))em" class="toc-item" href=\"$(href)\">$(text)</a>
             </li>
             """)
     end
