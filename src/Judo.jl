@@ -3,6 +3,8 @@ module Judo
 
 import Markdown, YAML
 
+include("eval.jl")
+
 
 """
 Parse YAML frontmatter. Returns a `(metadata, position)` pair where `position`
@@ -94,26 +96,47 @@ function keyvals_bool(keyvals::Dict, key::String, default::Bool)
 end
 
 
-function process(block::Markdown.Code, id::Nullable{UTF8String}, classes::Dict,
-                 keyvals::Dict, doc_metadata::Dict)
-    hide    = keyvals_bool(keyvals, "hide",    false)
-    execute = keyvals_bool(keyvals, "execute", true)
-    display = keyvals_bool(keyvals, "display", true)
-    results = get(keyvals, "results", "block")
+"""
+A simple display to collect displayed values and convert markdown blocks.
+"""
+type ProcessedDoc <: Display
+    blocks::Vector{Any}
 
-    if isempty(classes) || in("julia", classes)
-
+    function ProcessedDoc()
+        return new(Any[])
     end
 end
 
 
-function process_code_block(::Type{MIME"text/x-julia"}, id::Nullable{UTF8String},
+"""
+Execude and display output from julia code blocks.
+"""
+function process_code_block(doc::ProcessedDoc,
+                            ::Type{MIME"text/x-julia"},
+                            display_result::Bool,
+                            id::Nullable{UTF8String},
                             classes::Vector{UTF8String},
                             keyvals::Dict{UTF8String, UTF8String},
                             text::UTF8String)
-    
+
+    result = nothing
+    for (cmd, ex) in parseit(strip(text))
+        result = safeeval(ex)
+    end
+
+    if display_result
+        display(doc, result)
+    end
 end
 
+
+const supported_mime_types =
+    [ MIME"text/html",
+      MIME"image/svg+xml",
+      MIME"image/png",
+      MIME"text/latex",
+      MIME"text/vnd.graphviz",
+      MIME"text/plain" ]
 
 
 # Supported code block classes.
@@ -125,20 +148,24 @@ const code_block_classes = Dict{ASCIIString, Type{MIME}}(
 )
 
 
-"""
-A simple display to collect displayed values and convert markdown blocks.
-"""
-type ProcessedDoc <: Display
-    blocks::Any[]
-
-    function ProcessedDoc()
-        return new(Any[])
+function Base.display(doc::ProcessedDoc, data)
+    for m in supported_mime_types
+        if mimewritable(m(), data)
+            display(doc, m(), data)
+            break
+        end
     end
 end
 
 
-function Base.display(doc::ProcessedDoc, m::MIME"text/svg+xml", data)
+function Base.display(doc::ProcessedDoc, m::MIME"text/html", data)
+    push!(doc.blocks, Markdown.HTML(stringmime(m, data)))
+end
 
+
+function Base.display(doc::ProcessedDoc, m::MIME"text/plain", data)
+    println(STDERR, "displaying text: ", data)
+    push!(doc.blocks, Markdown.Paragraph(stringmime(m, data)))
 end
 
 
@@ -169,12 +196,11 @@ function process(doc::Markdown.MD, metadata::Dict)
             end
 
             if execute
-                block_result = process_code_block(code_block_classes[language], id,
-                                                  classes, keyvals, block.code)
-
-                # TODO: Super secret stdout/stderr capture technology
-
-                push!(processed.blocks, block_result)
+                process_code_block(processed,
+                                   code_block_classes[language],
+                                   !hide && display,
+                                   id, classes, keyvals, block.code)
+                # TODO: capture stdout/stderr ???
             end
         else
             push!(processed.blocks, block)
@@ -187,10 +213,7 @@ end
 
 function process(filename::String)
     metadata, md = parse_markdown(readall(filename))
-    md = process(md, metadata)
-
-    # TODO: Now what? Output HTML?
-    return md
+    return process(md, metadata)
 end
 
 
