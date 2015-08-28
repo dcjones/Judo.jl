@@ -272,6 +272,10 @@ end
 function section_id(section::String)
     # Keep only unicode letters, _ and -
     cleaned = replace(section, r"[^\p{L}_\-\s]", "")
-    lowercase(replace(cleaned, r"\s+", "-"))
+    return lowercase(replace(cleaned, r"\s+", "-"))
 end
 
+
+function section_id(section::Markdown.Code)
+    return section_id(section.code)
+end
