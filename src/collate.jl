@@ -11,11 +11,6 @@ const pkgurl_pat = r"github.com/(.*)\.git$"
 
 # Generate documentation from the given package.
 function collate(package::String; template::String="default")
-    # TODO: We need to somehow load the package to make sure docstrings are all
-    # there.
-    #declarations = harvest(package)
-    declarations = Dict()
-
     pkgver = ""
     try
         pkgver = Pkg.Dir.cd(() -> Pkg.Read.installed()[package][1])
@@ -47,7 +42,7 @@ function collate(package::String; template::String="default")
     end
 
     collate(filenames, template=template, outdir=outdir, pkgname=package,
-            pkgver=pkgver, pkgurl=pkgurl, declarations=declarations)
+            pkgver=pkgver, pkgurl=pkgurl)
 end
 
 
@@ -76,14 +71,11 @@ end
 function collate(filenames::Vector;
                  template::String="default",
                  outdir::String=".",
-                 declarations::Dict=Dict(),
                  pkgname=nothing,
                  pkgver=nothing,
                  pkgurl=nothing)
     toc = Dict{Nullable{UTF8String}, Vector{TOCEntry}}()
     titles = Dict{UTF8String, UTF8String}()
-
-    #declaration_markdown = generate_declaration_markdown(declarations)
 
     if !isdir(template)
         template = joinpath(Pkg.dir("Judo"), "templates", template)
@@ -93,13 +85,26 @@ function collate(filenames::Vector;
     end
 
     # make any expansions necessary in the original document
-    # TODO: insert docstrings
     docs = Dict()
+    substitution_text = Set{UTF8String}()
+    modules = Set{UTF8String}()
     for filename in filenames
         name = choose_document_name(filename)
-        docs[name] = readall(filename)
-        #docs[name] = expand_declaration_docs(readall(filename),
-                                             #declaration_markdown)
+        docs[name] = utf8(readall(filename))
+
+        union!(substitution_text, extract_substitution_text(docs[name]))
+
+        metadata, _ = parse_frontmatter(docs[name])
+        if haskey(metadata, "modules")
+            push!(modules, metadata["modules"]...)
+        end
+    end
+
+    # docstring substitution
+    docstrings = docstring_text(substitution_text, modules)
+    for name in keys(docs)
+        docs[name] = Crustache.render(docs[name], docstrings)
+        @show docs[name]
     end
 
     # dry-run to collect the section names in each document

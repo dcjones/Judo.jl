@@ -3,6 +3,8 @@ module Judo
 
 import Markdown, Mustache, YAML
 
+include("docstrings.jl")
+include("crustache.jl")
 include("process.jl")
 include("eval.jl")
 include("walkdir.jl")

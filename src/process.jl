@@ -1,4 +1,5 @@
 
+
 """
 Parse YAML frontmatter. Returns a `(metadata, position)` pair where `position`
 is the first position following the metadata and `metadata` is `nothing` if
@@ -7,13 +8,13 @@ there was no metadata to parse.
 function parse_frontmatter(data::String)
     mat = match(r"\s*^---"xm, data)
     if mat == nothing
-        return (nothing, 1)
+        return (Dict(), 1)
     end
     yaml_start = mat.offset
 
     mat = match(r"\s*^\.\.\."xm, data)
     if mat == nothing
-        return (nothing, 1)
+        return (Dict(), 1)
     end
     yaml_end = mat.offset + length(mat.match) - 1
 
@@ -123,7 +124,7 @@ function process_code_block(doc::ProcessedDoc,
         result = safeeval(ex)
     end
 
-    if display_result
+    if display_result && result != nothing
         display(doc, result)
     end
 end
