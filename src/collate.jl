@@ -51,7 +51,6 @@ function collate(package::String; template::String="default")
 end
 
 
-
 """
 Table of contents entry containing sections within one document.
 """
@@ -123,7 +122,7 @@ function collate(filenames::Vector;
         sort!(part_content)
     end
 
-    pandoc_template = joinpath(template, "template.html")
+    document_template = readall(joinpath(template, "template.html"))
 
     metadata = Dict{UTF8String, UTF8String}()
 
@@ -148,7 +147,7 @@ function collate(filenames::Vector;
         metadata["table-of-contents"] = table_of_contents(toc, title)
         metadata["name"] = name
         process(doc, Nullable{IO}(outfile),
-                template=Nullable{UTF8String}(pandoc_template),
+                template=Nullable{UTF8String}(utf8(document_template)),
                 toc=true,
                 outdir=outdir,
                 metadata=metadata)

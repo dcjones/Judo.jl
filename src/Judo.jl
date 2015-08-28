@@ -1,7 +1,7 @@
 
 module Judo
 
-import Markdown, YAML
+import Markdown, Mustache, YAML
 
 include("process.jl")
 include("eval.jl")

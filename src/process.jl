@@ -223,10 +223,15 @@ function process(data::String, out::Nullable{IO};
     end
 
     if !isnull(out)
-        # TODO: We need to handle template, etc, etc, here.
-        print(get(out), Markdown.html(process(md, metadata)))
+        body = Markdown.html(process(md, metadata))
+        if !isnull(template)
+            metadata["body"] = body
+            print(get(out), Mustache.render(get(template), metadata))
+        else
+            print(get(out), body)
+        end
     end
 
-    return metadata, sections
+    return document_metadata, sections
 end
 
