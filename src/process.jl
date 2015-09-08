@@ -1,4 +1,20 @@
 
+# Turn a section name into an html id.
+function section_id(section::String)
+    # Keep only unicode letters, _ and -
+    cleaned = replace(section, r"[^\p{L}_\-\s]", "")
+    return lowercase(replace(cleaned, r"\s+", "-"))
+end
+
+
+"""
+Convert a Markdown.Header with an id property to allow section links.
+"""
+function header_html{L}(header::Markdown.Header{L})
+    text = string(header.text...)
+    return Markdown.HTML(@sprintf("<h%d id=\"%s\">%s</h%d>", L, section_id(text), text, L))
+end
+
 
 """
 Parse YAML frontmatter. Returns a `(metadata, position)` pair where `position`
@@ -168,7 +184,8 @@ function Base.display(doc::ProcessedDoc, m::MIME"text/plain", data)
 end
 
 
-const html_paragraph_pat = r"^<.*>"
+const html_paragraph_pat = r"^<"
+
 
 
 """
@@ -204,11 +221,14 @@ function process(doc::Markdown.MD, metadata::Dict)
                                    id, classes, keyvals, block.code)
                 # TODO: capture stdout/stderr ???
             end
+        # manually convert headers to html so we can use header id's
+        elseif isa(block, Markdown.Header)
+            push!(processed.blocks, header_html(block))
+        # treat paragraphs that start with an html tag as html
         elseif isa(block, Markdown.Paragraph) &&
-               length(block.content) == 1 &&
                isa(block.content[1], String) &&
                match(html_paragraph_pat, block.content[1]) != nothing
-            push!(processed.blocks, Markdown.HTML(block.content[1]))
+            push!(processed.blocks, Markdown.HTML(string(block.content...)))
         else
             push!(processed.blocks, block)
         end
@@ -235,7 +255,7 @@ function process(data::String, out::Nullable{IO};
         body = Markdown.html(process(md, metadata))
         if !isnull(template)
             metadata["body"] = body
-            print(get(out), Mustache.render(get(template), metadata))
+            print(get(out), Mustache.render(get(template), document_metadata))
         else
             print(get(out), body)
         end

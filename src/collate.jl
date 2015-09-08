@@ -143,7 +143,7 @@ function collate(filenames::Vector;
     end
 
     for (name, doc) in docs
-        #println(STDERR, "processing ", name)
+        println(STDERR, "processing ", name)
         fmt = :markdown
         title = titles[name]
         outfilename = joinpath(outdir, string(name, ".html"))
@@ -267,14 +267,3 @@ function table_of_contents_sections(parent, sections, iscurrent; maxlevel=2)
 end
 
 
-# Turn a section name into an html id.
-function section_id(section::String)
-    # Keep only unicode letters, _ and -
-    cleaned = replace(section, r"[^\p{L}_\-\s]", "")
-    return lowercase(replace(cleaned, r"\s+", "-"))
-end
-
-
-function section_id(section::Markdown.Code)
-    return section_id(section.code)
-end
