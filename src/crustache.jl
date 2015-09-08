@@ -22,6 +22,10 @@ module Crustache
             lastpos = m.offset + length(m.match)
         end
 
+        if lastpos <= length(text)
+            push!(parts, text[lastpos:end])
+        end
+
         return string(parts...)
     end
 end

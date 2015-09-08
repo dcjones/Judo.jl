@@ -104,7 +104,6 @@ function collate(filenames::Vector;
     docstrings = docstring_text(substitution_text, modules)
     for name in keys(docs)
         docs[name] = Crustache.render(docs[name], docstrings)
-        @show docs[name]
     end
 
     # dry-run to collect the section names in each document
@@ -144,7 +143,7 @@ function collate(filenames::Vector;
     end
 
     for (name, doc) in docs
-        println(STDERR, "processing ", name)
+        #println(STDERR, "processing ", name)
         fmt = :markdown
         title = titles[name]
         outfilename = joinpath(outdir, string(name, ".html"))

@@ -168,6 +168,9 @@ function Base.display(doc::ProcessedDoc, m::MIME"text/plain", data)
 end
 
 
+const html_paragraph_pat = r"^<.*>"
+
+
 """
 Take as input parsed markdown, process code blocks, and modify the document
 representation in place.
@@ -201,6 +204,11 @@ function process(doc::Markdown.MD, metadata::Dict)
                                    id, classes, keyvals, block.code)
                 # TODO: capture stdout/stderr ???
             end
+        elseif isa(block, Markdown.Paragraph) &&
+               length(block.content) == 1 &&
+               isa(block.content[1], String) &&
+               match(html_paragraph_pat, block.content[1]) != nothing
+            push!(processed.blocks, Markdown.HTML(block.content[1]))
         else
             push!(processed.blocks, block)
         end

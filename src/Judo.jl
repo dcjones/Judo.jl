@@ -1,7 +1,7 @@
 
 module Judo
 
-import Markdown, Mustache, YAML
+import Mustache, YAML
 
 include("docstrings.jl")
 include("crustache.jl")
