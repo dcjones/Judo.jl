@@ -254,7 +254,7 @@ function process(data::String, out::Nullable{IO};
     if !isnull(out)
         body = Markdown.html(process(md, metadata))
         if !isnull(template)
-            metadata["body"] = body
+            document_metadata["body"] = body
             print(get(out), Mustache.render(get(template), document_metadata))
         else
             print(get(out), body)

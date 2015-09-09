@@ -37,16 +37,34 @@ function parse_import_arg(arg::UTF8String)
 end
 
 
+# TODO: I have to figure out how to write method signatures for these
+# abominations...
+function method_signature_md(io::IO, name, t::Type)
+    println(io, "\n```{.julia execute=\"false\"}")
+    print(io, name)
+    first = true
+    print(io, "(")
+    for typ in t.types
+        if !first
+            print(io, ", ")
+        end
+        print(io, "::", typ)
+        first = false
+    end
+    println(io, ")")
+    println(io, "```")
+end
+
+
 """
 Print a method signature in markdown. A variation of the method show function in
 Base.
 """
-function method_signature_md(io::IO, m::Method)
+function method_signature_md(io::IO, name, m::Method)
     # TODO: link to package source here
     # TODO: implement code in headers in Markdown so we can say: ## `thing`
-    println(io, "## ", m.func.code.name)
-    println(io, "```{.julia execute=\"false\"}")
-    print(io, m.func.code.name)
+    println(io, "\n```{.julia execute=\"false\"}")
+    print(io, name)
     tv, decls, file, line = Base.arg_decl_parts(m)
     if !isempty(tv)
         Base.show_delim_array(io, tv, '{', ',', '}', false)
@@ -59,25 +77,37 @@ function method_signature_md(io::IO, m::Method)
 end
 
 
+function method_signature_md(io::IO, name, m::Expr)
+    println(io, "\n```{.julia execute=\"false\"}")
+    println(io, m)
+    println(io, "```")
+end
+
+
 """
 Get function docs in a usable format: a dict pointing methods to markdown
 plaintext.
 """
-function method_doc(f::Function)
-    docs = Dict{Method, UTF8String}()
+function method_doc(f::Union(Function, DataType), modules::Set{Module})
+    docs = Dict{Any, UTF8String}()
     for mod in Docs.modules
+        if !in(mod, modules)
+            continue
+        end
+
         if haskey(Docs.meta(mod), f)
             fd = Docs.meta(mod)[f]
-            if isa(fd, Docs.FuncDoc)
+
+            if isa(fd, Docs.FuncDoc) || isa(fd, Docs.TypeDoc)
                 for m in fd.order
                     # delete leading function signature if it exists so we can
                     # actually handly this consistency, unlike base
                     md = fd.meta[m]
-                    if length(fd.order) > 1
+                    if isa(fd, Docs.FuncDoc) && length(fd.order) > 1
                         shift!(md.content)
                     end
 
-                    docs[m] = utf8(Base.Markdown.plain(md))
+                    docs[isa(fd, Docs.FuncDoc) ?  fd.source[m].args[1] : m] = utf8(Base.Markdown.plain(md))
                 end
             end
         end
@@ -91,10 +121,13 @@ end
 Extract docstring text.
 """
 function docstring_text(substitution_text::Set{UTF8String},
-                        modules::Set{UTF8String})
+                        modules_names::Set{UTF8String})
     # TODO: is there a way to do this in a more contained manner?
-    for mod in modules
-        eval(:(import $(parse_import_arg(mod)...)))
+    modules = Set{Module}()
+    for module_name in modules_names
+        import_arg = parse_import_arg(module_name)
+        eval(:(using $(import_arg...)))
+        push!(modules, eval(import_arg[end]))
     end
 
     docstrings = Dict{UTF8String, UTF8String}()
@@ -102,12 +135,28 @@ function docstring_text(substitution_text::Set{UTF8String},
         # because docstring handling in julia is currently awful, we have to
         # manually get method signatures.
         ex = parse(text)
-        val = eval(ex)
+        val = Any
+        try
+            val = eval(ex)
+        catch
+            warn("Could not evaluate docstring subsect \"$(text)\"")
+            continue
+        end
+
+        #if isa(val, Function)
+            #name = val.env.name
+        #else
+            #name = val.name.name
+        #end
+        name = text
+
         out = IOBuffer()
-        if isa(val, Function)
-            ds = method_doc(val)
+
+        if isa(val, Function) || isa(val, DataType)
+            ds = method_doc(val, modules)
+            println(out, "\n## ", name)
             for (meth, doc) in ds
-                method_signature_md(out, meth)
+                method_signature_md(out, name, meth)
                 print(out, doc)
             end
 
