@@ -137,7 +137,15 @@ function process_code_block(doc::ProcessedDoc,
 
     result = nothing
     for (cmd, ex) in parseit(strip(text))
-        result = safeeval(ex)
+        if ex == nothing
+            continue
+        end
+        try
+            result = safeeval(ex)
+        catch err
+            error(string("Error avaluating a code block: ", string(err), "\n",
+                  "in code\n", text))
+        end
     end
 
     if display_result && result != nothing
