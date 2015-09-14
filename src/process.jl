@@ -57,6 +57,7 @@ function parse_codeblock_attributes(data::String)
     position = 1
     data = strip(data)
     if !isempty(data) && data[1] == '{'
+        position = 2
         while true
             mat = match(attribute_pattern, data, position)
             if mat === nothing
@@ -134,7 +135,6 @@ function process_code_block(doc::ProcessedDoc,
                             classes::Vector{UTF8String},
                             keyvals::Dict{UTF8String, UTF8String},
                             text::UTF8String)
-
     result = nothing
     for (cmd, ex) in parseit(strip(text))
         if ex == nothing
@@ -206,11 +206,20 @@ function process(doc::Markdown.MD, metadata::Dict)
     for block in content
         if isa(block, Markdown.Code)
             id, classes, keyvals = parse_codeblock_attributes(block.language)
-            language = "julia"
-            for class in classes
-                if haskey(code_block_classes, class)
-                    language = class
-                    break
+            if isempty(classes)
+                language = "julia"
+            else
+                language = nothing
+                for class in classes
+                    if haskey(code_block_classes, class)
+                        language = class
+                        break
+                    end
+                end
+
+                if language == nothing
+                    push!(processed.blocks, block)
+                    continue
                 end
             end
 

@@ -17,7 +17,13 @@ end
 
 
 function Base.next(it::ParseIt, pos)
-    (ex,newpos) = Base.parse(it.value, pos)
+    newpos = -1
+    ex = nothing
+    try
+        (ex,newpos) = Base.parse(it.value, pos)
+    catch err
+        error("Error parsing code block: ", string(err), "\nin code:\n", it.value)
+    end
     ((it.value[pos:(newpos-1)], ex), newpos)
 end
 
