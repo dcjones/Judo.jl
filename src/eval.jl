@@ -2,11 +2,11 @@
 # An iterator for the parse function: parsit(source) will iterate over the
 # expressiosn in a string.
 type ParseIt
-    value::String
+    value::AbstractString
 end
 
 
-function parseit(value::String)
+function parseit(value::AbstractString)
     ParseIt(value)
 end
 
@@ -42,5 +42,3 @@ end
 function safeeval(ex::Expr)
     eval(WeaveSandbox, ex)
 end
-
-

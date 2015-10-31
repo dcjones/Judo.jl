@@ -5,7 +5,7 @@ module Crustache
     const crustache_pattern = r"{{(.*?)}}"
 
     function render(text::UTF8String, tokens::Dict{UTF8String, UTF8String})
-        parts = String[]
+        parts = AbstractString[]
         lastpos = 1
         for m in eachmatch(crustache_pattern, text)
             if m.offset > lastpos

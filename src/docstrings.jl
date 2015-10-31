@@ -88,7 +88,7 @@ end
 Get function docs in a usable format: a dict pointing methods to markdown
 plaintext.
 """
-function method_doc(f::Union(Function, DataType), modules::Set{Module})
+function method_doc(f::Union{Function, DataType}, modules::Set{Module})
     docs = Dict{Any, UTF8String}()
     for mod in Docs.modules
         if !in(mod, modules)
@@ -169,5 +169,3 @@ function docstring_text(substitution_text::Set{UTF8String},
 
     return docstrings
 end
-
-

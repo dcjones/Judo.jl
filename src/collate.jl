@@ -10,7 +10,7 @@ const pkgurl_pat = r"github.com/(.*)\.git$"
 
 
 # Generate documentation from the given package.
-function collate(package::String; template::String="default")
+function collate(package::AbstractString; template::AbstractString="default")
     pkgver = ""
     try
         pkgver = Pkg.Dir.cd(() -> Pkg.Read.installed()[package][1])
@@ -69,8 +69,8 @@ end
 
 # Generate documentation from multiple files.
 function collate(filenames::Vector;
-                 template::String="default",
-                 outdir::String=".",
+                 template::AbstractString="default",
+                 outdir::AbstractString=".",
                  pkgname=nothing,
                  pkgver=nothing,
                  pkgurl=nothing)
@@ -169,7 +169,7 @@ const fileext_pat = r"^(.+)\.([^\.]+)$"
 
 
 # Choose a documents name from its file name.
-function choose_document_name(filename::String)
+function choose_document_name(filename::AbstractString)
     filename = basename(filename)
     mat = match(fileext_pat, filename)
     name = filename
@@ -193,7 +193,7 @@ end
 
 
 # Generate a table of contents for the given document.
-function table_of_contents(toc, selected_title::String)
+function table_of_contents(toc, selected_title::AbstractString)
     parts = collect(keys(toc))
     part_order = [minimum([entry.order for entry in toc[part]])
                   for part in parts]
@@ -265,5 +265,3 @@ function table_of_contents_sections(parent, sections, iscurrent; maxlevel=2)
     end
     return takebuf_string(out)
 end
-
-
