@@ -1,6 +1,6 @@
 
 # Turn a section name into an html id.
-function section_id(section::String)
+function section_id(section::AbstractString)
     # Keep only unicode letters, _ and -
     cleaned = replace(section, r"[^\p{L}_\-\s]", "")
     return lowercase(replace(cleaned, r"\s+", "-"))
@@ -21,7 +21,7 @@ Parse YAML frontmatter. Returns a `(metadata, position)` pair where `position`
 is the first position following the metadata and `metadata` is `nothing` if
 there was no metadata to parse.
 """
-function parse_frontmatter(data::String)
+function parse_frontmatter(data::AbstractString)
     mat = match(r"\s*^---"xm, data)
     if mat == nothing
         return (Dict(), 1)
@@ -49,7 +49,7 @@ const attribute_pattern =
 """
 Loose, permissive parsing of pandoc-style code block attributes.
 """
-function parse_codeblock_attributes(data::String)
+function parse_codeblock_attributes(data::AbstractString)
     id = Nullable{UTF8String}()
     classes = UTF8String[]
     keyvals = Dict{UTF8String, UTF8String}()
@@ -88,7 +88,7 @@ end
 """
 Parse a markdown file with optional YAML frontmatter.
 """
-function parse_markdown(data::String)
+function parse_markdown(data::AbstractString)
     metadata, position = parse_frontmatter(data)
     md = Markdown.parse(data[position:end])
     sections = Markdown.Header[]
@@ -101,7 +101,7 @@ function parse_markdown(data::String)
 end
 
 
-function keyvals_bool(keyvals::Dict, key::String, default::Bool)
+function keyvals_bool(keyvals::Dict, key::AbstractString, default::Bool)
     val = get(keyvals, key, default ? "true" : "false")
     if val == "true"
         return true
@@ -243,7 +243,7 @@ function process(doc::Markdown.MD, metadata::Dict)
             push!(processed.blocks, header_html(block))
         # treat paragraphs that start with an html tag as html
         elseif isa(block, Markdown.Paragraph) &&
-               isa(block.content[1], String) &&
+               isa(block.content[1], AbstractString) &&
                match(html_paragraph_pat, block.content[1]) != nothing
             push!(processed.blocks, Markdown.HTML(string(block.content...)))
         else
@@ -255,7 +255,7 @@ function process(doc::Markdown.MD, metadata::Dict)
 end
 
 
-function process(data::String, out::Nullable{IO};
+function process(data::AbstractString, out::Nullable{IO};
                  template::Nullable{UTF8String}=Nullable{UTF8String}(),
                  toc::Bool=false,
                  outdir::UTF8String=utf8("."),
@@ -280,4 +280,3 @@ function process(data::String, out::Nullable{IO};
 
     return document_metadata, sections
 end
-
