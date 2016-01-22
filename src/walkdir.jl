@@ -8,10 +8,10 @@
 # Returns:
 #   A vector of paths relative to root.
 #
-function walkdir(root::String)
+function walkdir(root::AbstractString)
     root = abspath(root)
-    contents = String[]
-    stack = String[]
+    contents = AbstractString[]
+    stack = AbstractString[]
     push!(stack, root)
     while !isempty(stack)
         path = pop!(stack)

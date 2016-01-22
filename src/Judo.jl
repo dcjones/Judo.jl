@@ -12,11 +12,11 @@ include("collate.jl")
 # An iterator for the parse function: parsit(source) will iterate over the
 # expressiosn in a string.
 type ParseIt
-    value::String
+    value::AbstractString
 end
 
 
-function parseit(value::String)
+function parseit(value::AbstractString)
     ParseIt(value)
 end
 
@@ -53,7 +53,7 @@ end
 # Returns:
 #   A string containing the output from pandoc.
 #
-function pandoc(input::String, infmt::Symbol, outfmt::Symbol, args::String...)
+function pandoc(input::AbstractString, infmt::Symbol, outfmt::Symbol, args::AbstractString...)
     cmd = ByteString["pandoc",
                      "--from=$(string(infmt))",
                      "--to=$(string(outfmt))"]
@@ -68,7 +68,7 @@ end
 
 
 # Convert a string to a structure interpretable by pandoc json parser.
-function string_to_pandoc_json(s::String)
+function string_to_pandoc_json(s::AbstractString)
     out = {}
     for mat in eachmatch(r"\S+", s)
         if !isempty(out)
@@ -90,7 +90,7 @@ type WeaveDoc <: Display
     display_blocks::Array
 
     # Document name (used for naming any external files generated)
-    name::String
+    name::AbstractString
 
     # Output formal
     outfmt::Symbol
@@ -103,10 +103,10 @@ type WeaveDoc <: Display
     stdout_write
 
     # Output directory
-    outdir::String
+    outdir::AbstractString
 
-    function WeaveDoc(name::String, outfmt::Symbol, stdout_read, stdout_write,
-                      outdir::String)
+    function WeaveDoc(name::AbstractString, outfmt::Symbol, stdout_read, stdout_write,
+                      outdir::AbstractString)
         new({}, {}, name, outfmt, 1, stdout_read, stdout_write, outdir)
     end
 end
@@ -236,10 +236,10 @@ end
 
 
 # This is maybe an abuse. TODO: This is going to be a problem.
-writemime(io, m::MIME"text/vnd.graphviz", data::String) = write(io, data)
-writemime(io, m::MIME"image/vnd.graphviz", data::String) = write(io, data)
-writemime(io, m::MIME"image/svg+xml", data::String) = write(io, data)
-writemime(io, m::MIME"text/latex", data::String) = write(io, data)
+writemime(io, m::MIME"text/vnd.graphviz", data::AbstractString) = write(io, data)
+writemime(io, m::MIME"image/vnd.graphviz", data::AbstractString) = write(io, data)
+writemime(io, m::MIME"image/svg+xml", data::AbstractString) = write(io, data)
+writemime(io, m::MIME"text/latex", data::AbstractString) = write(io, data)
 
 
 # Turn YAML frontmatter parsed by pandoc into simplified julia structure.
@@ -251,7 +251,7 @@ writemime(io, m::MIME"text/latex", data::String) = write(io, data)
 #   A (String => String) dictionary with key value pairs.
 #
 function flatten_pandoc_metadata(pandoc_metadata::Dict)
-    metadata = Dict{String, String}()
+    metadata = Dict{AbstractString, AbstractString}()
     for (key, val) in pandoc_metadata["unMeta"]
         if val["t"] == "MetaInlines"
             metadata[key] = flatten_pandoc_metainlines(val["c"])
@@ -316,7 +316,7 @@ end
 #
 function weave(input::IO, output::IO;
                outfmt=:html5, name="judo", template=nothing,
-               toc::Bool=false, outdir::String=".", dryrun::Bool=false,
+               toc::Bool=false, outdir::AbstractString=".", dryrun::Bool=false,
                keyvals::Dict=Dict(),
                pandocargs=nothing)
     input_text = readall(input)
@@ -369,7 +369,7 @@ function weave(input::IO, output::IO;
     pandoc_metadata["today"] =
         {"t" => "MetaInlines",
          "c" => {{"t" => "Str",
-                  "c" => strip(readall(`date`))}}}
+                  "c" => string(Date(now()))}}}
 
     JSON.print(buf, {{"unMeta" => pandoc_metadata}, doc.blocks})
 

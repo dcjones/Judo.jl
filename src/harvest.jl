@@ -6,9 +6,9 @@ using DataStructures
 
 # Metadata parsed from a declarations's preceeding comment.
 type DeclarationComment
-    decltype::String
-    description::String
-    args::Union(OrderedDict, Nothing)
+    decltype::AbstractString
+    description::AbstractString
+    args::Union{OrderedDict, Void}
     sections::Dict
 
     function DeclarationComment(decltype, description)
@@ -48,7 +48,7 @@ const comment_strip_pat = r"\h*\#+"
 #   A three-tuple of the form (decltype, name, comment), where
 #   decltype is one of "function", "immutable", "type".
 #
-function extract_declaration_comments(input::String)
+function extract_declaration_comments(input::AbstractString)
     mats = {}
     comment_strip(txt) = replace(txt, comment_strip_pat, "")
 
@@ -71,7 +71,7 @@ end
 # Returns:
 #   A dictionary mapping declared identifiers to DeclarationComment objects.
 #
-function harvest(package::String)
+function harvest(package::AbstractString)
     srcdir = joinpath(Pkg.dir(package), "src")
     filenames = {}
     for filename in walkdir(srcdir)
@@ -107,7 +107,7 @@ end
 
 # Return a substring of input that is of equal or greater indentation than the
 # line starting at i.
-function get_indented_block(input::String, i::Integer=1)
+function get_indented_block(input::AbstractString, i::Integer=1)
     output = IOBuffer()
     n = length(input)
     block_indent = 0
@@ -163,7 +163,7 @@ const func_field_pat = r"^\h*(Args|Returns|Modifies|Throws)\s*:\h*\r?\n"im
 # Returns:
 #   A DeclarationComment object.
 #
-function parse_comment(decltype, input::String)
+function parse_comment(decltype, input::AbstractString)
     mat = match(func_field_pat, input)
     if mat == nothing
         return DeclarationComment(decltype, strip(input))
@@ -201,7 +201,7 @@ const arg_desc_pat = r"^(\h*)([\w_][\w\d_\!]*(?:\.\.\.)?)\h*:\h*(.*)\r?"m
 # Returns:
 #   A dictionary mapping arugment names to their descriptions.
 #
-function parse_comment_args(input::String)
+function parse_comment_args(input::AbstractString)
     args = OrderedDict()
     mat = match(arg_desc_pat, input)
     while mat != nothing
@@ -266,7 +266,7 @@ end
 
 
 # Insert function declaration comments into a markdown document.
-function expand_declaration_docs(input::String, declaration_markdown::Dict)
+function expand_declaration_docs(input::AbstractString, declaration_markdown::Dict)
     Mustache.render(input, declaration_markdown)
 end
 
