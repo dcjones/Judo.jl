@@ -10,7 +10,7 @@ const pkgurl_pat = r"github.com/(.*)\.git$"
 
 
 # Generate documentation from the given package.
-function collate(package::String; template::String="default")
+function collate(package::AbstractString; template::AbstractString="default")
     declarations = harvest(package)
 
     pkgver = ""
@@ -50,8 +50,8 @@ end
 
 # Generate documentation from multiple files.
 function collate(filenames::Vector;
-                 template::String="default",
-                 outdir::String=".",
+                 template::AbstractString="default",
+                 outdir::AbstractString=".",
                  declarations::Dict=Dict(),
                  pkgname=nothing,
                  pkgver=nothing,
@@ -87,7 +87,7 @@ function collate(filenames::Vector;
             toc[part] = {}
         end
 
-        push!(toc[part], (parseint(get(metadata, "order", "0")), name, title, sections))
+        push!(toc[part], (parse(Int,get(metadata, "order", "0")), name, title, sections))
     end
     for part_content in values(toc)
         sort!(part_content)
@@ -125,8 +125,10 @@ function collate(filenames::Vector;
     end
 
     # copy template files
-    run(`cp -r $(joinpath(template, "js")) $(outdir)`)
-    run(`cp -r $(joinpath(template, "css")) $(outdir)`)
+    #run(`cp -r $(joinpath(template, "js")) $(outdir)`)
+    cp(joinpath(template, "js"), joinpath(outdir, "js"), remove_destination=true)
+    #run(`cp -r $(joinpath(template, "css")) $(outdir)`)
+    cp(joinpath(template, "css"), joinpath(outdir, "css"), remove_destination=true)
 end
 
 
@@ -135,7 +137,7 @@ const fileext_pat = r"^(.+)\.([^\.]+)$"
 
 
 # Choose a documents name from its file name.
-function choose_document_name(filename::String)
+function choose_document_name(filename::AbstractString)
     filename = basename(filename)
     mat = match(fileext_pat, filename)
     name = filename
@@ -159,7 +161,7 @@ end
 
 
 # Generate a table of contents for the given document.
-function table_of_contents(toc, selected_title::String)
+function table_of_contents(toc, selected_title::AbstractString)
     parts = collect(keys(toc))
     part_order = [minimum([order for (order, name, title, sections) in toc[part]])
                   for part in parts]
@@ -233,7 +235,7 @@ end
 
 
 # Turn a section name into an html id.
-function section_id(section::String)
+function section_id(section::AbstractString)
     # Keep only unicode letters, _ and -
     cleaned = replace(section, r"[^\p{L}_\-\s]", "")
     lowercase(replace(cleaned, r"\s+", "-"))

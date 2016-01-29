@@ -1,7 +1,7 @@
 
 # Return a substring of input that is of equal or greater indentation than the
 # line starting at i.
-function get_indented_block(input::String, i::Integer=1)
+function get_indented_block(input::AbstractString, i::Integer=1)
     output = IOBuffer()
     n = length(input)
     block_indent = 0
@@ -56,7 +56,7 @@ const func_field_pat = r"^\h*(Args|Returns|Modifies|Throws)\s*:\h*\r?\n"im
 # Returns:
 #   A four-tuple of the form (description, args, returns, modifies, throws)
 #
-function parse_function_comment(input::String)
+function parse_function_comment(input::AbstractString)
     mat = match(func_field_pat, input)
     if mat == nothing
         return (strip(input), nothing, nothing, nothing, nothing, nothing)
@@ -104,7 +104,7 @@ const arg_desc_pat = r"^(\h*)([\w_][\w\d_\!]*)\h*:\h*(.*)\r?"m
 # Returns:
 #   A dictionary mapping arugment names to their descriptions.
 #
-function parse_function_comment_args(input::String)
+function parse_function_comment_args(input::AbstractString)
     args = Dict()
     mat = match(arg_desc_pat, input)
     while mat != nothing
